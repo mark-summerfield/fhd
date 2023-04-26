@@ -1,10 +1,11 @@
 # fhd
 
-The `fhd` “File History Data” package is for use by the GUI `FileHistory`
-application and the command line `fh` tool. It provides the underlying
-functionality that these tools use.
+The `fhd` “File History Data” package is for use by the GUI
+[`FileHistory`](https://github.com/mark-summerfield/filehistory) application
+and the command line [`fh`](https://github.com/mark-summerfield/fh) tool. It
+provides the underlying functionality that these tools use.
 
-In detail, `fhd` allows its clients to:
+The `fhd` package allows its clients to:
 
 - maintain a monitoring list of one or more files in a folder (and
   optionally in one or more subfolders) to be captured (i.e., add or
