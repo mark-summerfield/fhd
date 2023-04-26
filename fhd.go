@@ -4,13 +4,13 @@
 package fhd
 
 import (
-    "fmt"
-    _ "embed"
-    )
+	_ "embed"
+	"fmt"
+)
 
 //go:embed Version.dat
 var Version string
 
 func Hello() string {
-    return fmt.Sprintf("Hello fhd v%s", Version)
+	return fmt.Sprintf("Hello fhd v%s", Version)
 }

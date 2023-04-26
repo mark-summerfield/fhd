@@ -1,3 +1,5 @@
+# file format? custom disk-based btree?
+
 fhd.go
 
 fhd_test.go
@@ -5,3 +7,5 @@ fhd_test.go
 README.md
 
 st.sh
+
+# vim: syn=yaml
