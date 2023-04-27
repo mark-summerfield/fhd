@@ -9,28 +9,26 @@ st.sh
 # NOTE
 
     SNAPSHOTS
-    sid		int # > 0 unique key
-    when    	datetime
-    comment 	string
-    ignore	string # \t-separated globs; if empty use ignore from ignore_sid
-    ignore_sid	int # if 0 and ignore is empty then there are none
+    sid		    int # > 0 unique key
+    when    	    datetime
+    comment 	    string
+    monitored	    string # \n-separated list of filenames being monitored
+    monitored_sid   int # if monitored is empty use from monitored_sid's monitored
 
     CAPTURES
     cid		    int # > 0 unique key
+    sid		    int # > 0 the snapshot where this capture was made
     filename	    string # if empty use filename from filename_cid
     filename_cid    int
     content	    blob
-    patch	    blob
     content_cid	    int
 
-If content_cid is 0 the content is the current content (which could be
-empty if the file is empty) and patch is empty.
-If content_cid is > 0 the content is empty and the patch is nonempty:
-the content can be recreated by applying the patch to the content from
-content_cid.
-
-To do the content/patch/content_cid stuff, create a separate test app
-just to do that.
+- If content is empty and content_cid = 0 then this is an empty file;
+- if content is empty and content_cid > 0 then content is in
+  content_cid's content_cid, i.e., unchanged (therefore filename
+  changed);
+- if content is nonempty, then this is the file's data and content_cid
+  should be 0.
 
 See https://pkg.go.dev/github.com/kr/binarydist
 
@@ -40,5 +38,6 @@ For storage consider:
 - https://dgraph.io/docs/badger/
 - https://github.com/flower-corp/lotusdb
 
+For using binary patches see ../zOld/patchy
 
 # vim: syn=yaml
