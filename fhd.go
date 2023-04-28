@@ -5,12 +5,51 @@ package fhd
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
+
+	bolt "go.etcd.io/bbolt"
 )
 
-//go:embed Version.dat
-var Version string
+const (
+	ModeOwnerRW = 0o600
+)
 
-func Hello() string {
-	return fmt.Sprintf("Hello fhd v%s", Version)
+var (
+	//go:embed Version.dat
+	Version string
+
+	StateBucket = []byte("state")
+	SavesBucket = []byte("saves")
+)
+
+// Open opens (and creates if necessary) a .fhd file ready for use.
+// If the returned bolt.DB is not nil, call db.Close() when finished with
+// it.
+func Open(filename string) (*bolt.DB, error) {
+	db, err := bolt.Open(filename, ModeOwnerRW, nil)
+	if err != nil {
+		return nil, err
+	}
+	err = db.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists(StateBucket)
+		if err != nil {
+			return fmt.Errorf("failed to create bucket %q: %s", StateBucket,
+				err)
+		}
+		_, err = tx.CreateBucketIfNotExists(SavesBucket)
+		if err != nil {
+			return fmt.Errorf("failed to create bucket %q: %s", SavesBucket,
+				err)
+		}
+		return nil
+	})
+	if err != nil {
+		closeEerr := db.Close()
+		if closeEerr != nil {
+			return nil, errors.Join(err, closeEerr)
+		}
+		return nil, err
+	}
+	return db, nil
 }

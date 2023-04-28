@@ -8,6 +8,25 @@ st.sh
 
 # NOTE
 
+The `fhd` package allows its clients to do the following (where _files_ is
+short for "all files or one or more specified files" and _fid_ is short for
+"one or more specified file identifiers, i.e., filename and sid (save ID)"):
+
+- open: open (and create if needed) the initial `.fhd` with the given
+  filename or defaulting to `folder.fhd`;
+- set state: set the state for _files_ in the current folder (optionally
+  including subfolders) to – monitored, unmonitored (for a previously
+  monitored file), or ignored;
+- get state: get the state for _files_;
+- save: save a snapshot of the monitored _files_ (“check in”) with a
+  timestamp and an optional comment—this creates a new sid (save ID);
+- query: return a list of _fids_ and datetimes for _files_;
+- extract: extract any previously saved copy (using a unique generated
+  filename or a given filename) for _fids_;
+- delete: delete one or more previously saved copies of a monitored file
+  (thus forgetting parts of its history) for _fids_, and set the filenames'
+  states to unmonitored.
+
     STATE
     key filename string
     value state enum # monitored unmonitored ignored
