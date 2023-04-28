@@ -9,9 +9,13 @@ var (
 	//go:embed Version.dat
 	Version string
 
-	StateBucket   = []byte("states")
-	SavesBucket   = []byte("saves")
-	RenamedBucket = []byte("renamed")
+	FileFormat byte = 1
+
+	ConfigBucket = []byte("config")
+	StateBucket  = []byte("states")
+	SavesBucket  = []byte("saves")
+
+	ConfigFormat = []byte("format")
 )
 
 const ModeOwnerRW = 0o600

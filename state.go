@@ -7,6 +7,7 @@ var (
 	Ignored     StateKind = []byte{'I'}
 	Unmonitored StateKind = []byte{'U'}
 	Monitored   StateKind = []byte{'M'}
+	Renamed     StateKind = []byte{'R'}
 )
 
 type StateKind []byte
@@ -21,6 +22,10 @@ func (me *StateKind) IsUnmonitored() bool {
 
 func (me *StateKind) IsMonitored() bool {
 	return len(*me) == 1 && (*me)[0] == 'M'
+}
+
+func (me *StateKind) IsRenamed() bool {
+	return len(*me) == 1 && (*me)[0] == 'R'
 }
 
 type StateData struct {
@@ -50,4 +55,8 @@ func (me *StateData) IsUnmonitored() bool {
 
 func (me *StateData) IsMonitored() bool {
 	return me.state.IsMonitored()
+}
+
+func (me *StateData) IsRenamed() bool {
+	return me.state.IsRenamed()
 }

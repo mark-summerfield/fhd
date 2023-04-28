@@ -1,5 +1,6 @@
 # TODO since State() & SetState() work purely on data can add to
 # fhd_test.go
+
 fhd.go
 state.go
 consts.go
@@ -27,14 +28,18 @@ short for "all files or one or more specified files" and _fid_ is short for
 - query: return a list of _fids_ and datetimes for _files_;
 - extract: extract any previously saved copy (using a unique generated
   filename or a given filename) for _fids_;
-- rename: must be supported...
+- rename: see below
 - delete: delete one or more previously saved copies of a monitored file
   (thus forgetting parts of its history) for _fids_, and set the filenames'
   states to unmonitored.
 
-    STATE
+    CONFIG
+    key string # e.g., key='format' value=1
+    value any
+
+    STATES
     key filename string
-    value state enum # monitored unmonitored ignored
+    value state enum # monitored unmonitored ignored renamed
 
     SAVES
     key sid int # > 0
@@ -44,11 +49,9 @@ short for "all files or one or more specified files" and _fid_ is short for
 		content blob
 		sha256 blob
 		csid int # > 0 if content and sha256 are empty (see below)
+		cfilename string # nonempty if csid > 0 AND cfilename != filename
 		}
 
-    RENAMED # ?
-    key oldname string
-    value newname string
 
 In a SAVES value's bucket there are two special non-filename keys
 - *when datetime # save timestamp
@@ -68,7 +71,12 @@ predecessor if its predecessor's csid > 0, and so on) - if a match is
 found, set content and sha256 to empty and csid to the matched one;
 otherwise populate content and the sha256 and set csid to 0.
 
-Renaming means - add oldname–newname to RENAMED, set STATE oldname to
-unmonitored and add newname to STATE as monitored?
+Renaming
+- create a new save, and in value bucket key=newfilename,
+  value content = sha256 = empty, csid & cfilename point to previous
+  save's sid and filename
+- in states, set oldname's state to Renamed; add newname with state of
+  Monitored
+
 
 # vim: syn=yaml

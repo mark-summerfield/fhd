@@ -21,7 +21,18 @@ func New(filename string) (*Fhd, error) {
 		return nil, err
 	}
 	err = db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists(StateBucket)
+		buc, err := tx.CreateBucketIfNotExists(ConfigBucket)
+		if err != nil {
+			return fmt.Errorf("failed to create bucket %q: %s",
+				ConfigBucket, err)
+		}
+		if format := buc.Get(ConfigFormat); len(format) != 1 {
+			if err = buc.Put(ConfigFormat, []byte{FileFormat}); err != nil {
+				return fmt.Errorf("failed to initialize %q file format: %s",
+					ConfigBucket, err)
+			}
+		}
+		_, err = tx.CreateBucketIfNotExists(StateBucket)
 		if err != nil {
 			return fmt.Errorf("failed to create bucket %q: %s", StateBucket,
 				err)
@@ -30,11 +41,6 @@ func New(filename string) (*Fhd, error) {
 		if err != nil {
 			return fmt.Errorf("failed to create bucket %q: %s", SavesBucket,
 				err)
-		}
-		_, err = tx.CreateBucketIfNotExists(RenamedBucket)
-		if err != nil {
-			return fmt.Errorf("failed to create bucket %q: %s",
-				RenamedBucket, err)
 		}
 		return nil
 	})
@@ -56,6 +62,24 @@ func (me *Fhd) Close() error {
 // Filename returns the underlying database's filename.
 func (me *Fhd) Filename() string {
 	return me.db.Path()
+}
+
+// Format returns the underlying database's file format number.
+func (me *Fhd) FileFormat() (int, error) {
+	var fileFormat byte
+	err := me.db.View(func(tx *bolt.Tx) error {
+		format := tx.Bucket(ConfigBucket).Get(ConfigFormat)
+		if len(format) == 1 {
+			fileFormat = format[0]
+		}
+		return nil
+	})
+	if err != nil {
+		return int(FileFormat), err
+	} else if fileFormat == 0 {
+		return int(FileFormat), nil
+	}
+	return int(fileFormat), nil
 }
 
 // State returns the state of every known file.
