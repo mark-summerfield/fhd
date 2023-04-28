@@ -19,8 +19,9 @@ var (
 	//go:embed Version.dat
 	Version string
 
-	StateBucket = []byte("state")
-	SavesBucket = []byte("saves")
+	StateBucket   = []byte("state")
+	SavesBucket   = []byte("saves")
+	RenamedBucket = []byte("renamed")
 )
 
 // Open opens (and creates if necessary) a .fhd file ready for use.
@@ -41,6 +42,11 @@ func Open(filename string) (*bolt.DB, error) {
 		if err != nil {
 			return fmt.Errorf("failed to create bucket %q: %s", SavesBucket,
 				err)
+		}
+		_, err = tx.CreateBucketIfNotExists(RenamedBucket)
+		if err != nil {
+			return fmt.Errorf("failed to create bucket %q: %s",
+				RenamedBucket, err)
 		}
 		return nil
 	})

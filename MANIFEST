@@ -41,6 +41,10 @@ short for "all files or one or more specified files" and _fid_ is short for
 		csid int # > 0 if content and sha256 are empty (see below)
 		}
 
+    RENAMED
+    key oldname string
+    value newname string
+
 In a SAVES value's bucket there are two special non-filename keys
 - *when datetime # save timestamp
 - *comment string
@@ -58,5 +62,8 @@ compare that with the sha256s of its predecessor (or predecessor's
 predecessor if its predecessor's csid > 0, and so on) - if a match is
 found, set content and sha256 to empty and csid to the matched one;
 otherwise populate content and the sha256 and set csid to 0.
+
+Renaming means - add oldname–newname to RENAMED, set STATE oldname to
+unmonitored and add newname to STATE as monitored.
 
 # vim: syn=yaml
