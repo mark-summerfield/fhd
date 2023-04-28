@@ -3,18 +3,15 @@
 
 package fhd
 
-type StateData struct {
-	Sid      int // save ID
-	Filename string
-	State    StateKind
-}
+import _ "embed"
 
-type StateKind uint8
+var (
+	//go:embed Version.dat
+	Version string
 
-const (
-	Ignored StateKind = iota
-	Unmonitored
-	Monitored
+	StateBucket   = []byte("states")
+	SavesBucket   = []byte("saves")
+	RenamedBucket = []byte("renamed")
 )
 
 const ModeOwnerRW = 0o600

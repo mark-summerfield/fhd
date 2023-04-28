@@ -18,22 +18,17 @@ import (
 
 func TestOpen(t *testing.T) {
 	filename := filepath.Join(os.TempDir(), "temp1.fhd")
-	db, err := Open(filename)
-	defer func() { _ = db.Close() }()
+	fhd, err := New(filename)
+	defer func() { _ = fhd.Close() }()
 	defer func() { os.Remove(filename) }()
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
 	} else {
-		expected := "DB<\"/tmp/temp1.fhd\">"
-		actual := db.String()
-		if actual != expected {
-			t.Errorf("expected %q, got %q", expected, actual)
-		}
-		actual = db.Path()
+		actual := fhd.Filename()
 		if actual != filename {
 			t.Errorf("expected %q, got %q", filename, actual)
 		}
-		err = db.View(func(tx *bolt.Tx) error {
+		err = fhd.db.View(func(tx *bolt.Tx) error {
 			if buck := tx.Bucket(StateBucket); buck == nil {
 				t.Error("expected StateBucket, got nil")
 			}

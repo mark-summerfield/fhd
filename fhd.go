@@ -4,26 +4,18 @@
 package fhd
 
 import (
-	_ "embed"
 	"errors"
 	"fmt"
 
 	bolt "go.etcd.io/bbolt"
 )
 
-var (
-	//go:embed Version.dat
-	Version string
+type Fhd struct {
+	db *bolt.DB
+}
 
-	StateBucket   = []byte("state")
-	SavesBucket   = []byte("saves")
-	RenamedBucket = []byte("renamed")
-)
-
-// Open opens (and creates if necessary) a .fhd file ready for use.
-// If the returned bolt.DB is not nil, call db.Close() when finished with
-// it.
-func Open(filename string) (*bolt.DB, error) {
+// New opens (and creates if necessary) the given .fhd file ready for use.
+func New(filename string) (*Fhd, error) {
 	db, err := bolt.Open(filename, ModeOwnerRW, nil)
 	if err != nil {
 		return nil, err
@@ -53,15 +45,43 @@ func Open(filename string) (*bolt.DB, error) {
 		}
 		return nil, err
 	}
-	return db, nil
+	return &Fhd{db: db}, nil
 }
 
-func State(filenames []string) ([]*StateData, error) {
-
-	return nil, nil // TODO
+// Close closes the underlying database.
+func (me *Fhd) Close() error {
+	return me.db.Close()
 }
 
-func SetState(state StateKind, filenames []string) error {
+// Filename returns the underlying database's filename.
+func (me *Fhd) Filename() string {
+	return me.db.Path()
+}
+
+// State returns the state of every known file.
+func (me *Fhd) State() ([]*StateData, error) {
+	stateData := make([]*StateData, 0)
+	err := me.db.View(func(tx *bolt.Tx) error {
+		buck := tx.Bucket(StateBucket)
+		if buck == nil {
+			return errors.New("failed to find StateBucket")
+		}
+		cursor := buck.Cursor()
+		rawFilename, rawState := cursor.First()
+		for ; rawFilename != nil; rawFilename, rawState = cursor.Next() {
+			stateData = append(stateData, newStateFromRaw(rawFilename,
+				rawState))
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return stateData, nil
+}
+
+// SetState sets the state of every given file the the given state.
+func (me *Fhd) SetState(state StateKind, filenames []string) error {
 	// if state == Ignored but filename is in fhd then for that filename set
 	// state to be Unmonitored ??? Or leave that as higher-level logic for
 	// callers ???

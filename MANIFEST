@@ -1,4 +1,7 @@
+# TODO since State() & SetState() work purely on data can add to
+# fhd_test.go
 fhd.go
+state.go
 consts.go
 
 fhd_test.go
@@ -24,6 +27,7 @@ short for "all files or one or more specified files" and _fid_ is short for
 - query: return a list of _fids_ and datetimes for _files_;
 - extract: extract any previously saved copy (using a unique generated
   filename or a given filename) for _fids_;
+- rename: must be supported...
 - delete: delete one or more previously saved copies of a monitored file
   (thus forgetting parts of its history) for _fids_, and set the filenames'
   states to unmonitored.
@@ -42,7 +46,7 @@ short for "all files or one or more specified files" and _fid_ is short for
 		csid int # > 0 if content and sha256 are empty (see below)
 		}
 
-    RENAMED
+    RENAMED # ?
     key oldname string
     value newname string
 
@@ -65,6 +69,6 @@ found, set content and sha256 to empty and csid to the matched one;
 otherwise populate content and the sha256 and set csid to 0.
 
 Renaming means - add oldname–newname to RENAMED, set STATE oldname to
-unmonitored and add newname to STATE as monitored.
+unmonitored and add newname to STATE as monitored?
 
 # vim: syn=yaml
