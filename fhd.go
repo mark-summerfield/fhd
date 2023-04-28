@@ -11,10 +11,6 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
-const (
-	ModeOwnerRW = 0o600
-)
-
 var (
 	//go:embed Version.dat
 	Version string
@@ -58,4 +54,17 @@ func Open(filename string) (*bolt.DB, error) {
 		return nil, err
 	}
 	return db, nil
+}
+
+func State(filenames []string) ([]*StateData, error) {
+
+	return nil, nil // TODO
+}
+
+func SetState(state StateKind, filenames []string) error {
+	// if state == Ignored but filename is in fhd then for that filename set
+	// state to be Unmonitored ??? Or leave that as higher-level logic for
+	// callers ???
+
+	return nil // TODO
 }
