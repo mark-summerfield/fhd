@@ -7,20 +7,20 @@ provides the underlying functionality that these tools use.
 
 The `fhd` package allows its clients to:
 
-- maintain a monitoring list of one or more files in a folder (and
-  optionally in one or more subfolders) to be captured (i.e., add or
-  remove files from the monitoring list);
-- capture the monitored files as they are at this moment (in
-  version-control-speak, “check in”)—each capture may include an optional
-  comment and optional tag; 
-- rename one or more files (so history is preserved despite the name
-  change);
-- view previous captures of any monitored file;
-- compare any previous capture of any monitored file with the current
-  file or any other previous capture;
-- restore any previous capture of any monitored file;
-- delete one or more captures of a monitored file (thus forgetting parts of
-  its history);
+- monitor one or more files in the current folder (and optionally
+  subfolders);
+- set one or more files to be ignored;
+- stop (or restart) monitoring a monitored file;
+- state - this should return a list of the files `fhd` knows about and their
+  state and whether any have been saved, and a list of any files in the same
+  folder(s) whose state is unknown — these need to be either monitored or
+  ignored;
+- save a snapshot of the monitored files (“check in”) with an optional
+  comment;
+- extract any previously saved copy (using a unique generated filename or
+  a given filename);
+- delete one or more previously saved copies of a monitored file (thus
+  forgetting parts of its history);
 - purge a monitored file and its entire history so it disappears forever.
 
 `fhd` keeps all its data in a _single_ file with the `.fhd` extension.

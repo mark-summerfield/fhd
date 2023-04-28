@@ -8,36 +8,36 @@ st.sh
 
 # NOTE
 
-    SNAPSHOTS
-    sid		    int # > 0 unique key
-    when    	    datetime
-    comment 	    string
-    monitored	    string # \n-separated list of filenames being monitored
-    monitored_sid   int # if monitored is empty use from monitored_sid's monitored
+    STATE
+    key filename string
+    value state enum # monitored unmonitored ignored
 
-    CAPTURES
-    cid		    int # > 0 unique key
-    sid		    int # > 0 the snapshot where this capture was made
-    filename	    string # if empty use filename from filename_cid
-    filename_cid    int
-    content	    blob
-    content_cid	    int
+    SAVES
+    key sid int # > 0
+    value bucket
+	key filename string # see below for special cases
+	value struct { 
+		content blob
+		sha256 blob
+		csid int # > 0 if content and sha256 are empty (see below)
+		}
 
-- If content is empty and content_cid = 0 then this is an empty file;
-- if content is empty and content_cid > 0 then content is in
-  content_cid's content_cid, i.e., unchanged (therefore filename
-  changed);
-- if content is nonempty, then this is the file's data and content_cid
-  should be 0.
+In a SAVES value's bucket there are two special non-filename keys
+- *when datetime # save timestamp
+- *comment string
 
-See https://pkg.go.dev/github.com/kr/binarydist
+The initial monitor creates the STATE and SAVES, populates STATE setting
+state to monitored and then does a save. It creates a new sid and
+corresponding value bucket and sets the bucket's `*when` and `*comment`
+and for each file adds the filename as key and sets its value struct's
+content to the file's content, sha256 to the content's sha256, and the
+csid to 0.
 
-For storage consider:
-
-- https://github.com/etcd-io/bbolt
-- https://dgraph.io/docs/badger/
-- https://github.com/flower-corp/lotusdb
-
-For using binary patches see ../zOld/patchy
+On subsequent saves the filenames to use are all those in STATE whose
+state is monitored. For each file to save generate its sha256 and
+compare that with the sha256s of its predecessor (or predecessor's
+predecessor if its predecessor's csid > 0, and so on) - if a match is
+found, set content and sha256 to empty and csid to the matched one;
+otherwise populate content and the sha256 and set csid to 0.
 
 # vim: syn=yaml
