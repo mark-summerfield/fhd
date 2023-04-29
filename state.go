@@ -13,7 +13,7 @@ var (
 type StateKind []byte
 
 func (me *StateKind) Equal(other StateKind) bool {
-	return (*me)[0] == other[0]
+	return len(*me) == 1 && len(other) == 1 && (*me)[0] == other[0]
 }
 
 func (me *StateKind) IsIgnored() bool {
