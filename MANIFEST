@@ -1,3 +1,4 @@
+# TODO update states & saves for branches
 # TODO since State() & SetState() work purely on data can add to
 # fhd_test.go
 # also test Monitored()
@@ -38,21 +39,26 @@ short for "all files or one or more specified files" and _fid_ is short for
     key string # e.g., key='format' value=1
     value any
 
-    STATES
-    key filename string
-    value state enum # monitored unmonitored ignored renamed
-
-    SAVES
-    key sid int # > 0
+    BRANCHES
+    key string # default "main"
     value bucket
-	key filename string # see below for special cases
-	value struct { 
-		content blob
-		sha256 blob
-		patch blob
-		oldSid int # > 0 if content and sha256 are empty (see below)
-		oldFilename string # nonempty if oldSid > 0 AND oldFilename != filename
-		}
+	key "states"
+	    STATES
+	    key filename string
+	    value state enum # monitored unmonitored ignored renamed
+	key "saves"
+	    SAVES
+	    key sid int # > 0
+	    value bucket
+		key filename string # see below for special cases
+		value struct { 
+			content blob
+			sha256 blob
+			patch blob
+			oldBranchname
+			oldSid int # > 0 if content and sha256 are empty (see below)
+			oldFilename string # nonempty if oldSid > 0 AND oldFilename != filename
+			}
 
 
 In a SAVES value's bucket there are two special non-filename keys
