@@ -16,7 +16,7 @@ type Fhd struct {
 
 // New opens (and creates if necessary) the given .fhd file ready for use.
 func New(filename string) (*Fhd, error) {
-	db, err := bolt.Open(filename, ModeOwnerRW, nil)
+	db, err := bolt.Open(filename, ModeUserRW, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func (me *Fhd) State() ([]*StateData, error) {
 	err := me.db.View(func(tx *bolt.Tx) error {
 		buck := tx.Bucket(StateBucket)
 		if buck == nil {
-			return errors.New("failed to find StateBucket")
+			return fmt.Errorf("failed to find %q", StateBucket)
 		}
 		cursor := buck.Cursor()
 		rawFilename, rawState := cursor.First()
@@ -137,7 +137,7 @@ func (me *Fhd) stateOf(state StateKind) ([]string, error) {
 	err := me.db.View(func(tx *bolt.Tx) error {
 		buck := tx.Bucket(StateBucket)
 		if buck == nil {
-			return errors.New("failed to find StateBucket")
+			return fmt.Errorf("failed to find %q", StateBucket)
 		}
 		cursor := buck.Cursor()
 		rawFilename, rawState := cursor.First()
@@ -157,26 +157,51 @@ func (me *Fhd) stateOf(state StateKind) ([]string, error) {
 func (me *Fhd) saveOne(filename string) error {
 	fmt.Println("saveOne", filename)
 	/*
-		compute sha256 for filename
-		find filename in saves (should be in last save, i.e., most recent sid, foundSid)
-		if new sha256 == saved sha256:
-			content = sha256 = patch → empty
-			oldSid = foundSid
-			oldFilename = empty
-		else: new content
-			find most recent sid for nonempty content (i.e., iterate from last to first)
-			compute patch (diff new content with old nonempty content)
-			if len(patch) < (len(oldContent) * 8 / 10):
-				content = sha256 → empty
-				patch = patch
-				oldSid = oldContentSid
+			compute sha256 for filename
+			find filename in saves (should be in last save, i.e., most recent sid, foundSid)
+			if new sha256 == saved sha256: # unchanged
+				blob = sha256 → empty
+				flag = InOld
+				oldSid = foundSid
 				oldFilename = empty
-			else:
-				content = new content
-				sha256 = new sha256
-				pathc = empty
-				oldSid = 0
-				oldFilename = empty
+			else: new content
+				find most recent sid for nonempty content (i.e., iterate from last to first)
+				in two gorountines:
+					compute patch (diff new content with old nonempty content)
+					gzip new content
+				smallest = min(len(gzipped), len(patch))
+				if !useRawContent(len(content), smallest)
+					if len(gzipped) < len(patch)
+						blob = gzipped
+						sha256 = new sha256 # to check ungzip
+						flag = Gz
+						oldSid = 0
+						oldFilename = empty
+					else:
+						blob = patch
+						sha256 = new sha256 # to check old blob + patch
+						flag = Patch
+						oldSid = foundSid
+						oldFilename = empty
+				else:
+					blob = new content
+					flag = Raw
+					sha256 = new sha256
+					oldSid = 0
+					oldFilename = empty
+
+		func useRawContent(oldLen, newLen int) bool {
+			var ratio float64
+			switch {
+			case oldLen < 10K: ratio = 0.6
+			case oldLen < 100K: ratio = 0.7
+			case oldLen < 1MB: ratio = 0.8
+			case oldLen < 10MB: ratio = 0.9
+			default: ratio = 0.95
+			}
+			return (float64(oldLen) * ratio) < float64(newLen)
+		}
+
 	*/
 	return nil
 }
