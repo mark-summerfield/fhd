@@ -105,6 +105,8 @@ func (me *Fhd) State() ([]*StateData, error) {
 }
 
 // SetState sets the state of every given file the the given state.
+// Note that if state is Ignored and a file is being monitored, that file's
+// state will be set to Unmonitored.
 func (me *Fhd) SetState(state StateKind, filenames []string) error {
 	return me.db.Update(func(tx *bolt.Tx) error {
 		buck := tx.Bucket(StateBucket)
@@ -116,8 +118,6 @@ func (me *Fhd) SetState(state StateKind, filenames []string) error {
 			key := []byte(filename)
 			newState := state
 			oldState := buck.Get(key)
-			// Missing files can be ignored; monitored files may only be
-			// unmonitored.
 			if oldState != nil && state.Equal(Ignored) {
 				newState = Unmonitored
 			}
