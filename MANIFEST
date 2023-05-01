@@ -13,6 +13,12 @@ README.md
 
 st.sh
 
+# Libs
+
+- Key-Value store: https://pkg.go.dev/go.etcd.io/bbolt
+- Diff/Patch: https://pkg.go.dev/github.com/kr/binarydist
+
+
 # NOTE
 
 The `fhd` package allows its clients to do the following (where _files_ is
@@ -57,7 +63,6 @@ short for "all files or one or more specified files" and _fid_ is short for
 		    oldSid int # > 0 if content and sha256 are empty (see below)
 		    oldFilename string # nonempty if oldSid > 0 AND oldFilename != filename
 		    }
-
 
 # Maybe out of date
 The initial monitor creates the STATE and SAVES, populates STATE setting
