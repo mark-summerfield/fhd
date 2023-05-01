@@ -104,9 +104,11 @@ func (me *Fhd) State() ([]*StateData, error) {
 	return stateData, nil
 }
 
-// SetState sets the state of every given file the the given state.
-// Note that if state is Ignored and a file is being monitored, that file's
-// state will be set to Unmonitored.
+// SetState sets the state of every given file the the given state except as
+// folows.
+// If state is Ignored: if a file's current state is Monitored, its state
+// will be set to Unmonitored, and if its current state is Renamed, its
+// state won't change.
 func (me *Fhd) SetState(state StateKind, filenames []string) error {
 	return me.db.Update(func(tx *bolt.Tx) error {
 		buck := tx.Bucket(StateBucket)
@@ -117,9 +119,14 @@ func (me *Fhd) SetState(state StateKind, filenames []string) error {
 		for _, filename := range filenames {
 			key := []byte(filename)
 			newState := state
-			oldState := buck.Get(key)
-			if oldState != nil && state.Equal(Ignored) {
-				newState = Unmonitored
+			oldState := StateKind(buck.Get(key))
+			if oldState != nil && newState.Equal(Ignored) {
+				if oldState.Equal(Renamed) {
+					continue // Can't go from Renamed to Ignored
+				}
+				if oldState.Equal(Monitored) { // Can only go from Monitored
+					newState = Unmonitored // to Unmonitored, not to Ignored
+				}
 			}
 			if ierr := buck.Put(key, newState); ierr != nil {
 				err = errors.Join(err, ierr)
