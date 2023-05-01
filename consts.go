@@ -18,13 +18,4 @@ var (
 	ConfigFormat = []byte("format")
 )
 
-type Flag uint8
-
-const (
-	Raw Flag = iota
-	Patch
-	Gz
-	InOld
-
-	ModeUserRW = 0o600
-)
+const ModeUserRW = 0o600

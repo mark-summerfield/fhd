@@ -55,3 +55,30 @@ func TestOpen(t *testing.T) {
 		}
 	}
 }
+
+func TestFlagForSizes(t *testing.T) {
+	if flag := flagForSizes(1000, 600, 0); flag != Gz {
+		t.Errorf("expected Gz, got %v", flag)
+	}
+	if flag := flagForSizes(1000, 970, 0); flag != Raw {
+		t.Errorf("expected Gz, got %v", flag)
+	}
+	if flag := flagForSizes(1000, 600, 700); flag != Gz {
+		t.Errorf("expected Gz, got %v", flag)
+	}
+	if flag := flagForSizes(1000, 970, 900); flag != Raw {
+		t.Errorf("expected Gz, got %v", flag)
+	}
+	if flag := flagForSizes(1000, 600, 500); flag != Patch {
+		t.Errorf("expected Gz, got %v", flag)
+	}
+	if flag := flagForSizes(1000, 970, 800); flag != Patch {
+		t.Errorf("expected Gz, got %v", flag)
+	}
+	if flag := flagForSizes(1000, 600, 400); flag != Patch {
+		t.Errorf("expected Gz, got %v", flag)
+	}
+	if flag := flagForSizes(1000, 970, 800); flag != Patch {
+		t.Errorf("expected Gz, got %v", flag)
+	}
+}
