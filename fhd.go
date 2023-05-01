@@ -106,11 +106,27 @@ func (me *Fhd) State() ([]*StateData, error) {
 
 // SetState sets the state of every given file the the given state.
 func (me *Fhd) SetState(state StateKind, filenames []string) error {
-	// if state == Ignored but filename is in fhd then for that filename set
-	// state to be Unmonitored ??? Or leave that as higher-level logic for
-	// callers ???
-
-	return nil // TODO
+	return me.db.Update(func(tx *bolt.Tx) error {
+		buck := tx.Bucket(StateBucket)
+		if buck == nil {
+			return fmt.Errorf("failed to find %q", StateBucket)
+		}
+		var err error
+		for _, filename := range filenames {
+			key := []byte(filename)
+			newState := state
+			oldState := buck.Get(key)
+			// Missing files can be ignored; monitored files may only be
+			// unmonitored.
+			if oldState != nil && state.Equal(Ignored) {
+				newState = Unmonitored
+			}
+			if ierr := buck.Put(key, newState); ierr != nil {
+				err = errors.Join(err, ierr)
+			}
+		}
+		return err
+	})
 }
 
 // Monitored returns the list of every monitored file.
