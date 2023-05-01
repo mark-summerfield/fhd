@@ -46,6 +46,9 @@ short for "all files or one or more specified files" and _fid_ is short for
     "saves" bucket
 	key sid int # > 0
 	value bucket
+	    key "*when" value datetime
+	    key "*comment" value string (may be empty)
+	    # then > 0 of:
 	    key filename string # see below for special cases
 	    value struct { 
 		    blob []byte
@@ -56,10 +59,7 @@ short for "all files or one or more specified files" and _fid_ is short for
 		    }
 
 
-In a SAVES value's bucket there are two special non-filename keys
-- *when datetime # save timestamp
-- *comment string
-
+# Maybe out of date
 The initial monitor creates the STATE and SAVES, populates STATE setting
 state to monitored and then does a save. It creates a new sid and
 corresponding value bucket and sets the bucket's `*when` and `*comment`
