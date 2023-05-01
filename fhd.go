@@ -215,3 +215,18 @@ func (me *Fhd) saveOne(filename string) error {
 //	// must a/c for patches
 //	// returns new filename e.g. filename#1.ext and err
 // }
+
+func (me *Fhd) findSid(filename string) (int, error) {
+	var sid int
+	err := me.db.View(func(tx *bolt.Tx) error {
+		buck := tx.Bucket(SavesBucket)
+		if buck == nil {
+			return fmt.Errorf("failed to find %q", SavesBucket)
+		}
+		// TODO iterate key (sid) from last back to first using cursor
+		// check value bucket for matching filename & if found set sid &
+		// break
+		return nil
+	})
+	return sid, err
+}
