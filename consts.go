@@ -16,6 +16,8 @@ var (
 	savesBucket  = []byte("saves")
 
 	configFormat = []byte("format")
+	savesWhen    = []byte("*when")
+	savesComment = []byte("*comment")
 )
 
 const modeUserRW = 0o600

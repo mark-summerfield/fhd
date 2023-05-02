@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	bolt "go.etcd.io/bbolt"
 )
@@ -157,23 +158,40 @@ func (me *Fhd) Rename(oldFilename, newFilename string) error {
 
 // Returns the most recent Save ID (SID).
 func (me *Fhd) Sid() (SidInfo, error) {
-	//var sidInfo SidInfo
+	var sidInfo SidInfo
 	err := me.db.View(func(tx *bolt.Tx) error {
-		/*
-			saves := tx.Bucket(savesBucket)
-			if saves == nil {
-				return fmt.Errorf("failed to find %q", savesBucket)
+		saves := tx.Bucket(savesBucket)
+		if saves == nil {
+			return fmt.Errorf("failed to find %q", savesBucket)
+		}
+		cursor := saves.Cursor()
+		sid, _ := cursor.Last()
+		save := saves.Bucket(sid)
+		if save != nil {
+			var when time.Time
+			rawWhen := save.Get(savesWhen)
+			if rawWhen != nil {
+				if err := when.UnmarshalBinary(rawWhen); err != nil {
+					return err
+				}
 			}
-			cursor := saves.Cursor()
-			rawSid, save := cursor.Last()
-			sid
-		*/
+			var comment string
+			rawComment := save.Get(savesComment)
+			if rawComment != nil {
+				comment = string(rawComment)
+			}
+			u, err := btou(sid)
+			if err != nil {
+				return err
+			}
+			sidInfo = newSidInfo(u, when, comment)
+		}
 		return nil
 	})
 	if err != nil {
 		return newInvalidSidInfo(), err
 	}
-	return newInvalidSidInfo(), nil // TODO
+	return sidInfo, nil
 }
 
 // Returns all the Save IDs (SIDs).

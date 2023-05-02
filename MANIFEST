@@ -1,12 +1,12 @@
 # TODO test State() & setState() since they work purely on data
 # TODO test Monitored(), Unmonitored(), Ignored() - ditto
-# TODO implement Sid()
 # TODO implement saveOne()
 # TODO implement Sids()
 # TODO implement SidForFilename()
 # TODO implement SidsForFilename()
 # TODO implement Extract()
 # TODO implement ExtractForSid()
+# TODO implement Rename()
 
 fhd.go # TODO 
 fhdx.go # TODO
