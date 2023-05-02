@@ -8,12 +8,12 @@ import (
 )
 
 type SidInfo struct {
-	sid     int
+	sid     uint64
 	when    time.Time
 	comment string
 }
 
-func newSidInfo(sid int, when time.Time, comment string) SidInfo {
+func newSidInfo(sid uint64, when time.Time, comment string) SidInfo {
 	return SidInfo{sid: sid, when: when, comment: comment}
 }
 
@@ -25,7 +25,7 @@ func (me *SidInfo) IsValid() bool {
 	return me.sid > 0
 }
 
-func (me *SidInfo) Sid() int {
+func (me *SidInfo) Sid() uint64 {
 	return me.sid
 }
 

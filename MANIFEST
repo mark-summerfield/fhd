@@ -1,7 +1,5 @@
 # TODO test State() & setState() since they work purely on data
 # TODO test Monitored(), Unmonitored(), Ignored() - ditto
-# NOTE implement → implement & add test
-# TODO implement nextSid(): create a new bucket using a new > 0 sid
 # TODO implement Sid()
 # TODO implement saveOne()
 # TODO implement Sids()
@@ -15,6 +13,7 @@ fhdx.go # TODO
 state.go
 flag.go
 sidinfo.go
+util.go
 consts.go
 
 fhd_test.go
@@ -36,8 +35,8 @@ short for "all files or one or more specified files" and _fid_ is short for
 "one or more specified file identifiers, i.e., filename and sid (save ID)"):
 
     "config" bucket
-    key string # e.g., key='format' value=1
-    value any
+	key string # e.g., key='format' value=1
+	value any
 
     "states" bucket
 	key filename string
@@ -46,8 +45,8 @@ short for "all files or one or more specified files" and _fid_ is short for
     "saves" bucket
 	key sid int # > 0
 	value bucket
-	    key "*when" value datetime
-	    key "*comment" value string (may be empty)
+	    "*when" time.Time
+	    "*comment" string
 	    # then > 0 of:
 	    key filename string # see below for special cases
 	    value struct { 

@@ -17,39 +17,8 @@ type Fhd struct {
 
 // New opens (and creates if necessary) the given .fhd file ready for use.
 func New(filename string) (*Fhd, error) {
-	db, err := bolt.Open(filename, modeUserRW, nil)
+	db, err := newDb(filename)
 	if err != nil {
-		return nil, err
-	}
-	err = db.Update(func(tx *bolt.Tx) error {
-		buc, err := tx.CreateBucketIfNotExists(configBucket)
-		if err != nil {
-			return fmt.Errorf("failed to create bucket %q: %s",
-				configBucket, err)
-		}
-		if format := buc.Get(configFormat); len(format) != 1 {
-			if err = buc.Put(configFormat, []byte{fileFormat}); err != nil {
-				return fmt.Errorf("failed to initialize %q file format: %s",
-					configBucket, err)
-			}
-		}
-		_, err = tx.CreateBucketIfNotExists(stateBucket)
-		if err != nil {
-			return fmt.Errorf("failed to create bucket %q: %s", stateBucket,
-				err)
-		}
-		_, err = tx.CreateBucketIfNotExists(savesBucket)
-		if err != nil {
-			return fmt.Errorf("failed to create bucket %q: %s", savesBucket,
-				err)
-		}
-		return nil
-	})
-	if err != nil {
-		closeEerr := db.Close()
-		if closeEerr != nil {
-			return nil, errors.Join(err, closeEerr)
-		}
 		return nil, err
 	}
 	return &Fhd{db: db}, nil
@@ -88,11 +57,11 @@ func (me *Fhd) FileFormat() (int, error) {
 func (me *Fhd) State() ([]*StateData, error) {
 	stateData := make([]*StateData, 0)
 	err := me.db.View(func(tx *bolt.Tx) error {
-		buck := tx.Bucket(stateBucket)
-		if buck == nil {
+		states := tx.Bucket(stateBucket)
+		if states == nil {
 			return fmt.Errorf("failed to find %q", stateBucket)
 		}
-		cursor := buck.Cursor()
+		cursor := states.Cursor()
 		rawFilename, rawState := cursor.First()
 		for ; rawFilename != nil; rawFilename, rawState = cursor.Next() {
 			stateData = append(stateData, newStateFromRaw(rawFilename,
@@ -169,7 +138,10 @@ func (me *Fhd) Save(comment string) (SidInfo, error) {
 	if err != nil {
 		return newInvalidSidInfo(), err
 	}
-	sidInfo := me.nextSid(comment)
+	sidInfo, err := me.nextSid(comment)
+	if err != nil {
+		return newInvalidSidInfo(), err
+	}
 	sid := sidInfo.Sid()
 	for _, filename := range monitored {
 		if ierr := me.saveOne(sid, filename); ierr != nil {
@@ -184,8 +156,24 @@ func (me *Fhd) Rename(oldFilename, newFilename string) error {
 }
 
 // Returns the most recent Save ID (SID).
-func (me *Fhd) Sid() SidInfo {
-	return newInvalidSidInfo() // TODO
+func (me *Fhd) Sid() (SidInfo, error) {
+	//var sidInfo SidInfo
+	err := me.db.View(func(tx *bolt.Tx) error {
+		/*
+			saves := tx.Bucket(savesBucket)
+			if saves == nil {
+				return fmt.Errorf("failed to find %q", savesBucket)
+			}
+			cursor := saves.Cursor()
+			rawSid, save := cursor.Last()
+			sid
+		*/
+		return nil
+	})
+	if err != nil {
+		return newInvalidSidInfo(), err
+	}
+	return newInvalidSidInfo(), nil // TODO
 }
 
 // Returns all the Save IDs (SIDs).
@@ -198,8 +186,8 @@ func (me *Fhd) Sids() ([]SidInfo, error) {
 func (me *Fhd) SidForFilename(filename string) (SidInfo, error) {
 	var sidInfo SidInfo
 	err := me.db.View(func(tx *bolt.Tx) error {
-		buck := tx.Bucket(savesBucket)
-		if buck == nil {
+		saves := tx.Bucket(savesBucket)
+		if saves == nil {
 			return fmt.Errorf("failed to find %q", savesBucket)
 		}
 		// TODO iterate key (sid) from last back to first using cursor
@@ -228,7 +216,7 @@ func (me *Fhd) Extract(filename string, writer io.Writer) error {
 
 // Writes the content of the given filename from the specified Save
 // (identified by its SID) to the given writer.
-func (me *Fhd) ExtractForSid(sid int, filename string,
+func (me *Fhd) ExtractForSid(sid uint64, filename string,
 	writer io.Writer) error {
 	return errors.New("ExtractForSid unimplemented") // TODO
 }

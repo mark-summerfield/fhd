@@ -1,6 +1,7 @@
 package fhd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -80,5 +81,111 @@ func TestFlagForSizes(t *testing.T) {
 	}
 	if flag := flagForSizes(1000, 970, 800); flag != Patch {
 		t.Errorf("expected Gz, got %v", flag)
+	}
+}
+
+func TestTest(t *testing.T) {
+	filename := filepath.Join(os.TempDir(), "temp2.fhd")
+	fhd, err := New(filename)
+	defer func() { _ = fhd.Close() }()
+	defer func() { os.Remove(filename) }()
+	if err != nil {
+		t.Errorf("unexpected error: %s", err)
+	} else {
+		expected := "save #1"
+		sidInfo, err := fhd.nextSid(expected)
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if sidInfo.Sid() != 1 {
+			t.Errorf("unexpected sid, expected 1, got %d", sidInfo.Sid())
+		}
+		if sidInfo.Comment() != expected {
+			t.Errorf("unexpected sid, expected %s, got %s", expected,
+				sidInfo.Comment())
+		}
+		err = fhd.db.Update(func(tx *bolt.Tx) error {
+			saves := tx.Bucket(savesBucket)
+			if saves == nil {
+				err := fmt.Errorf("expected savesBucket, got nil")
+				t.Error(err)
+				return err
+			}
+			_, err := saves.CreateBucket(utob(sidInfo.Sid()))
+			if err != nil {
+				t.Error(err)
+				return err
+			}
+			sid, _ := saves.NextSequence()
+			if sid != 2 {
+				t.Errorf("expected sid of 2: %d", sid)
+			}
+			_, err = saves.CreateBucket(utob(sidInfo.Sid() + 1))
+			if err != nil {
+				t.Error(err)
+				return err
+			}
+			sid, _ = saves.NextSequence()
+			if sid != 3 {
+				t.Errorf("expected sid of 3: %d", sid)
+			}
+			_, err = saves.CreateBucket(utob(sidInfo.Sid() + 2))
+			if err != nil {
+				t.Error(err)
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		err = fhd.db.View(func(tx *bolt.Tx) error {
+			saves := tx.Bucket(savesBucket)
+			if saves == nil {
+				t.Error("expected savesBucket, got nil")
+			}
+			cursor := saves.Cursor()
+			sid, _ := cursor.Last()
+			if sid == nil {
+				t.Error("expected savesBucket sid 3, got nil")
+			}
+			u, err := btou(sid)
+			if err != nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			if u != 3 {
+				t.Errorf("expected savesBucket expected 3 got %v", sid)
+			}
+			sid, _ = cursor.Prev()
+			if sid == nil {
+				t.Error("expected savesBucket sid 2, got nil")
+			}
+			u, err = btou(sid)
+			if err != nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			if u != 2 {
+				t.Errorf("expected savesBucket expected 2 got %v", sid)
+			}
+			sid, _ = cursor.Prev()
+			if sid == nil {
+				t.Error("expected savesBucket sid 1, got nil")
+			}
+			u, err = btou(sid)
+			if err != nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			if u != 1 {
+				t.Errorf("expected savesBucket expected 1 got %v", sid)
+			}
+			sid, _ = cursor.Prev()
+			if sid != nil {
+				t.Errorf("expected savesBucket nil got %v", sid)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
 	}
 }

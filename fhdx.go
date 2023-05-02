@@ -19,15 +19,15 @@ import (
 // Can only go from Monitored to Unmonitored, not Ignored.
 func (me *Fhd) setState(state StateKind, filenames ...string) error {
 	return me.db.Update(func(tx *bolt.Tx) error {
-		buck := tx.Bucket(stateBucket)
-		if buck == nil {
+		states := tx.Bucket(stateBucket)
+		if states == nil {
 			return fmt.Errorf("failed to find %q", stateBucket)
 		}
 		var err error
 		for _, filename := range filenames {
 			key := []byte(filename)
 			newState := state
-			oldState := StateKind(buck.Get(key))
+			oldState := StateKind(states.Get(key))
 			if oldState != nil {
 				if newState.Equal(Unmonitored) && oldState.Equal(Ignored) {
 					continue // Ignored is implicitly Unmonitored
@@ -40,7 +40,7 @@ func (me *Fhd) setState(state StateKind, filenames ...string) error {
 					}
 				}
 			}
-			if ierr := buck.Put(key, newState); ierr != nil {
+			if ierr := states.Put(key, newState); ierr != nil {
 				err = errors.Join(err, ierr)
 			}
 		}
@@ -51,11 +51,11 @@ func (me *Fhd) setState(state StateKind, filenames ...string) error {
 func (me *Fhd) stateOf(state StateKind) ([]string, error) {
 	monitored := make([]string, 0)
 	err := me.db.View(func(tx *bolt.Tx) error {
-		buck := tx.Bucket(stateBucket)
-		if buck == nil {
+		states := tx.Bucket(stateBucket)
+		if states == nil {
 			return fmt.Errorf("failed to find %q", stateBucket)
 		}
-		cursor := buck.Cursor()
+		cursor := states.Cursor()
 		rawFilename, rawState := cursor.First()
 		for ; rawFilename != nil; rawFilename, rawState = cursor.Next() {
 			if state.Equal(StateKind(rawState)) {
@@ -70,12 +70,23 @@ func (me *Fhd) stateOf(state StateKind) ([]string, error) {
 	return monitored, nil
 }
 
-func (me *Fhd) nextSid(comment string) SidInfo {
-	sid := 0 // TODO make valid SID
-	return newSidInfo(sid, time.Now(), comment)
+func (me *Fhd) nextSid(comment string) (SidInfo, error) {
+	var sid uint64
+	err := me.db.Update(func(tx *bolt.Tx) error {
+		saves := tx.Bucket(savesBucket)
+		if saves == nil {
+			return fmt.Errorf("failed to find %q", savesBucket)
+		}
+		sid, _ = saves.NextSequence()
+		return nil
+	})
+	if err != nil {
+		return newInvalidSidInfo(), err
+	}
+	return newSidInfo(sid, time.Now(), comment), nil
 }
 
-func (me *Fhd) saveOne(sid int, filename string) error {
+func (me *Fhd) saveOne(sid uint64, filename string) error {
 	return fmt.Errorf("saveOne unimplemented %d %q", sid, filename) // TODO
 	/*
 		new data = read filename's content
