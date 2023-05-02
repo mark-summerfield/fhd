@@ -104,41 +104,40 @@ func (me *Fhd) State() ([]*StateData, error) {
 	return stateData, nil
 }
 
-// SetState sets the state of every given file the the given state except as
-// folows.
-// If state is Ignored: if a file's current state is Monitored, its state
-// will be set to Unmonitored, and if its current state is Renamed, its
-// state won't change.
-func (me *Fhd) SetState(state StateKind, filenames []string) error {
-	return me.db.Update(func(tx *bolt.Tx) error {
-		buck := tx.Bucket(StateBucket)
-		if buck == nil {
-			return fmt.Errorf("failed to find %q", StateBucket)
-		}
-		var err error
-		for _, filename := range filenames {
-			key := []byte(filename)
-			newState := state
-			oldState := StateKind(buck.Get(key))
-			if oldState != nil && newState.Equal(Ignored) {
-				if oldState.Equal(Renamed) {
-					continue // Can't go from Renamed to Ignored
-				}
-				if oldState.Equal(Monitored) { // Can only go from Monitored
-					newState = Unmonitored // to Unmonitored, not to Ignored
-				}
-			}
-			if ierr := buck.Put(key, newState); ierr != nil {
-				err = errors.Join(err, ierr)
-			}
-		}
-		return err
-	})
-}
-
 // Monitored returns the list of every monitored file.
 func (me *Fhd) Monitored() ([]string, error) {
 	return me.stateOf(Monitored)
+}
+
+// Unmonitored returns the list of every unmonitored file.
+func (me *Fhd) Unmonitored() ([]string, error) {
+	return me.stateOf(Unmonitored)
+}
+
+// Ignored returns the list of every ignored file.
+func (me *Fhd) Ignored() ([]string, error) {
+	return me.stateOf(Ignored)
+}
+
+// Monitor sets the given files to be monitored _and_ does an initial Save.
+func (me *Fhd) Monitor(filenames ...string) error {
+	err := me.setState(Monitored, filenames...)
+	if err != nil {
+		return err
+	}
+	return me.Save()
+}
+
+// Unmonitor sets the given files to be unmonitored. Any Ignored files stay
+// Ignored.
+func (me *Fhd) Unmonitor(filenames ...string) error {
+	return me.setState(Unmonitored, filenames...)
+}
+
+// Ignore sets the given files to be ignored. Any Monitored files become
+// Unmonitored rather than Ignored.
+func (me *Fhd) Ignore(filenames ...string) error {
+	return me.setState(Ignored, filenames...)
 }
 
 // Save saves a snapshot of every monitored file.
@@ -153,6 +152,47 @@ func (me *Fhd) Save() error {
 		}
 	}
 	return err
+}
+
+func (me *Fhd) Rename(oldFilename, newFilename string) error {
+	return errors.New("Rename unimplemented") // TODO
+}
+
+// setState sets the state of every given file the the given state except as
+// folows.
+// If state is Ignored: if a file's current state is Monitored, its state
+// will be set to Unmonitored, and if its current state is Renamed, its
+// state won't change.
+// Can only go from Monitored to Unmonitored, not Ignored.
+func (me *Fhd) setState(state StateKind, filenames ...string) error {
+	return me.db.Update(func(tx *bolt.Tx) error {
+		buck := tx.Bucket(StateBucket)
+		if buck == nil {
+			return fmt.Errorf("failed to find %q", StateBucket)
+		}
+		var err error
+		for _, filename := range filenames {
+			key := []byte(filename)
+			newState := state
+			oldState := StateKind(buck.Get(key))
+			if oldState != nil {
+				if newState.Equal(Unmonitored) && oldState.Equal(Ignored) {
+					continue // Ignored is implicitly Unmonitored
+				} else if newState.Equal(Ignored) {
+					if oldState.Equal(Renamed) {
+						continue // Can't go from Renamed to Ignored
+					}
+					if oldState.Equal(Monitored) {
+						newState = Unmonitored
+					}
+				}
+			}
+			if ierr := buck.Put(key, newState); ierr != nil {
+				err = errors.Join(err, ierr)
+			}
+		}
+		return err
+	})
 }
 
 func (me *Fhd) stateOf(state StateKind) ([]string, error) {

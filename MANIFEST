@@ -1,4 +1,4 @@
-# TODO since State() & SetState() work purely on data can add to
+# TODO since State() & setState() work purely on data can add to
 # fhd_test.go
 # also test Monitored()
 
