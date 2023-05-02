@@ -29,14 +29,14 @@ func TestOpen(t *testing.T) {
 			t.Errorf("expected %q, got %q", filename, actual)
 		}
 		err = fhd.db.View(func(tx *bolt.Tx) error {
-			if buck := tx.Bucket(ConfigBucket); buck == nil {
-				t.Error("expected ConfigBucket, got nil")
+			if buck := tx.Bucket(configBucket); buck == nil {
+				t.Error("expected configBucket, got nil")
 			}
-			if buck := tx.Bucket(StateBucket); buck == nil {
-				t.Error("expected StateBucket, got nil")
+			if buck := tx.Bucket(stateBucket); buck == nil {
+				t.Error("expected stateBucket, got nil")
 			}
-			if buck := tx.Bucket(SavesBucket); buck == nil {
-				t.Error("expected SavesBucket, got nil")
+			if buck := tx.Bucket(savesBucket); buck == nil {
+				t.Error("expected savesBucket, got nil")
 			}
 			if buck := tx.Bucket([]byte{'x'}); buck != nil {
 				t.Errorf("expected nil bucket, got %v", buck)
@@ -46,12 +46,12 @@ func TestOpen(t *testing.T) {
 		if err != nil {
 			t.Errorf("unexpected error: %s", err)
 		}
-		fileFormat, err := fhd.FileFormat()
+		fileformat, err := fhd.FileFormat()
 		if err != nil {
 			t.Errorf("unexpected error: %s", err)
-		} else if fileFormat != int(FileFormat) {
+		} else if fileformat != int(fileFormat) {
 			t.Errorf("unexpected file format: got %d, expected %d",
-				fileFormat, FileFormat)
+				fileformat, fileFormat)
 		}
 	}
 }

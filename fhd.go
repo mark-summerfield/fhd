@@ -6,6 +6,7 @@ package fhd
 import (
 	"errors"
 	"fmt"
+	"io"
 
 	bolt "go.etcd.io/bbolt"
 )
@@ -16,30 +17,30 @@ type Fhd struct {
 
 // New opens (and creates if necessary) the given .fhd file ready for use.
 func New(filename string) (*Fhd, error) {
-	db, err := bolt.Open(filename, ModeUserRW, nil)
+	db, err := bolt.Open(filename, modeUserRW, nil)
 	if err != nil {
 		return nil, err
 	}
 	err = db.Update(func(tx *bolt.Tx) error {
-		buc, err := tx.CreateBucketIfNotExists(ConfigBucket)
+		buc, err := tx.CreateBucketIfNotExists(configBucket)
 		if err != nil {
 			return fmt.Errorf("failed to create bucket %q: %s",
-				ConfigBucket, err)
+				configBucket, err)
 		}
-		if format := buc.Get(ConfigFormat); len(format) != 1 {
-			if err = buc.Put(ConfigFormat, []byte{FileFormat}); err != nil {
+		if format := buc.Get(configFormat); len(format) != 1 {
+			if err = buc.Put(configFormat, []byte{fileFormat}); err != nil {
 				return fmt.Errorf("failed to initialize %q file format: %s",
-					ConfigBucket, err)
+					configBucket, err)
 			}
 		}
-		_, err = tx.CreateBucketIfNotExists(StateBucket)
+		_, err = tx.CreateBucketIfNotExists(stateBucket)
 		if err != nil {
-			return fmt.Errorf("failed to create bucket %q: %s", StateBucket,
+			return fmt.Errorf("failed to create bucket %q: %s", stateBucket,
 				err)
 		}
-		_, err = tx.CreateBucketIfNotExists(SavesBucket)
+		_, err = tx.CreateBucketIfNotExists(savesBucket)
 		if err != nil {
-			return fmt.Errorf("failed to create bucket %q: %s", SavesBucket,
+			return fmt.Errorf("failed to create bucket %q: %s", savesBucket,
 				err)
 		}
 		return nil
@@ -66,29 +67,30 @@ func (me *Fhd) Filename() string {
 
 // Format returns the underlying database's file format number.
 func (me *Fhd) FileFormat() (int, error) {
-	var fileFormat byte
+	var fileformat byte
 	err := me.db.View(func(tx *bolt.Tx) error {
-		format := tx.Bucket(ConfigBucket).Get(ConfigFormat)
+		format := tx.Bucket(configBucket).Get(configFormat)
 		if len(format) == 1 {
-			fileFormat = format[0]
+			fileformat = format[0]
 		}
 		return nil
 	})
 	if err != nil {
-		return int(FileFormat), err
-	} else if fileFormat == 0 {
-		return int(FileFormat), nil
+		return int(fileFormat), err
+	} else if fileformat == 0 {
+		return int(fileFormat), nil
 	}
-	return int(fileFormat), nil
+	return int(fileformat), nil
 }
 
 // State returns the state of every known file.
+// See also Monitored, Unmonitored, and Ignored.
 func (me *Fhd) State() ([]*StateData, error) {
 	stateData := make([]*StateData, 0)
 	err := me.db.View(func(tx *bolt.Tx) error {
-		buck := tx.Bucket(StateBucket)
+		buck := tx.Bucket(stateBucket)
 		if buck == nil {
-			return fmt.Errorf("failed to find %q", StateBucket)
+			return fmt.Errorf("failed to find %q", stateBucket)
 		}
 		cursor := buck.Cursor()
 		rawFilename, rawState := cursor.First()
@@ -105,175 +107,128 @@ func (me *Fhd) State() ([]*StateData, error) {
 }
 
 // Monitored returns the list of every monitored file.
+// See also State.
 func (me *Fhd) Monitored() ([]string, error) {
 	return me.stateOf(Monitored)
 }
 
 // Unmonitored returns the list of every unmonitored file.
+// See also State.
 func (me *Fhd) Unmonitored() ([]string, error) {
 	return me.stateOf(Unmonitored)
 }
 
 // Ignored returns the list of every ignored file.
+// See also State.
 func (me *Fhd) Ignored() ([]string, error) {
 	return me.stateOf(Ignored)
 }
 
 // Monitor sets the given files to be monitored _and_ does an initial Save.
-func (me *Fhd) Monitor(filenames ...string) error {
+// Returns the new Save ID (SID).
+// See also MonitorWithComment, Unmonitor and Ignore.
+func (me *Fhd) Monitor(filenames ...string) (SidInfo,
+	error) {
 	err := me.setState(Monitored, filenames...)
 	if err != nil {
-		return err
+		return newInvalidSidInfo(), err
 	}
-	return me.Save()
+	return me.Save("")
+}
+
+// MonitorWithComment sets the given files to be monitored _and_ does an
+// initial Save. Returns the new Save ID (SID).
+// See also Monitor, Unmonitor and Ignore.
+func (me *Fhd) MonitorWithComment(comment string,
+	filenames ...string) (SidInfo, error) {
+	err := me.setState(Monitored, filenames...)
+	if err != nil {
+		return newInvalidSidInfo(), err
+	}
+	return me.Save(comment)
 }
 
 // Unmonitor sets the given files to be unmonitored. Any Ignored files stay
 // Ignored.
+// See also Monitor and Ignore.
 func (me *Fhd) Unmonitor(filenames ...string) error {
 	return me.setState(Unmonitored, filenames...)
 }
 
 // Ignore sets the given files to be ignored. Any Monitored files become
 // Unmonitored rather than Ignored.
+// See also Monitor and Unmonitor.
 func (me *Fhd) Ignore(filenames ...string) error {
 	return me.setState(Ignored, filenames...)
 }
 
-// Save saves a snapshot of every monitored file.
-func (me *Fhd) Save() error {
+// Save saves a snapshot of every monitored file and returns the
+// corresponding Save ID (SID).
+func (me *Fhd) Save(comment string) (SidInfo, error) {
 	monitored, err := me.Monitored()
 	if err != nil {
-		return err
+		return newInvalidSidInfo(), err
 	}
+	sidInfo := me.nextSid(comment)
+	sid := sidInfo.Sid()
 	for _, filename := range monitored {
-		if ierr := me.saveOne(filename); ierr != nil {
+		if ierr := me.saveOne(sid, filename); ierr != nil {
 			err = errors.Join(err, ierr)
 		}
 	}
-	return err
+	return sidInfo, err
 }
 
 func (me *Fhd) Rename(oldFilename, newFilename string) error {
 	return errors.New("Rename unimplemented") // TODO
 }
 
-// setState sets the state of every given file the the given state except as
-// folows.
-// If state is Ignored: if a file's current state is Monitored, its state
-// will be set to Unmonitored, and if its current state is Renamed, its
-// state won't change.
-// Can only go from Monitored to Unmonitored, not Ignored.
-func (me *Fhd) setState(state StateKind, filenames ...string) error {
-	return me.db.Update(func(tx *bolt.Tx) error {
-		buck := tx.Bucket(StateBucket)
-		if buck == nil {
-			return fmt.Errorf("failed to find %q", StateBucket)
-		}
-		var err error
-		for _, filename := range filenames {
-			key := []byte(filename)
-			newState := state
-			oldState := StateKind(buck.Get(key))
-			if oldState != nil {
-				if newState.Equal(Unmonitored) && oldState.Equal(Ignored) {
-					continue // Ignored is implicitly Unmonitored
-				} else if newState.Equal(Ignored) {
-					if oldState.Equal(Renamed) {
-						continue // Can't go from Renamed to Ignored
-					}
-					if oldState.Equal(Monitored) {
-						newState = Unmonitored
-					}
-				}
-			}
-			if ierr := buck.Put(key, newState); ierr != nil {
-				err = errors.Join(err, ierr)
-			}
-		}
-		return err
-	})
+// Returns the most recent Save ID (SID).
+func (me *Fhd) Sid() SidInfo {
+	return newInvalidSidInfo() // TODO
 }
 
-func (me *Fhd) stateOf(state StateKind) ([]string, error) {
-	monitored := make([]string, 0)
+// Returns all the Save IDs (SIDs).
+func (me *Fhd) Sids() ([]SidInfo, error) {
+	sidInfos := make([]SidInfo, 0)
+	return sidInfos, errors.New("Sids unimplemented") // TODO
+}
+
+// Returns the most recent SID for the given filename.
+func (me *Fhd) SidForFilename(filename string) (SidInfo, error) {
+	var sidInfo SidInfo
 	err := me.db.View(func(tx *bolt.Tx) error {
-		buck := tx.Bucket(StateBucket)
+		buck := tx.Bucket(savesBucket)
 		if buck == nil {
-			return fmt.Errorf("failed to find %q", StateBucket)
-		}
-		cursor := buck.Cursor()
-		rawFilename, rawState := cursor.First()
-		for ; rawFilename != nil; rawFilename, rawState = cursor.Next() {
-			if state.Equal(StateKind(rawState)) {
-				monitored = append(monitored, string(rawFilename))
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return monitored, nil
-}
-
-func (me *Fhd) saveOne(filename string) error {
-	fmt.Println("saveOne", filename)
-	/*
-		new data = read filename's content
-		find filename in saves (should be in last save, i.e., most recent sid, foundSid)
-		create 2 or 3 goroutines
-			- compute sha256 for new data -> ([]byte, Raw)
-			- gzip data -> ([]byte, Gz)
-			- if found, patch (diff, old data) -> ([]byte, Patch)
-		flag := flagForSizes(len(raw), len(gz), len(patch))
-		switch {
-			case new sha256 == old sha256: # unchanged data
-				blob = sha256 → empty
-				flag = InOld
-				oldSid = foundSid
-				oldFilename = empty
-			case flag == Raw: # new content
-				blob = new content
-				flag = Raw
-				sha256 = new sha256
-				oldSid = 0
-				oldFilename = empty
-			case flag == Gz:
-				blob = gzipped
-				sha256 = new sha256 # to check ungzip
-				flag = Gz
-				oldSid = 0
-				oldFilename = empty
-			case flag == Patch
-				blob = patch
-				sha256 = new sha256 # to check old blob + patch
-				flag = Patch
-				oldSid = foundSid
-				oldFilename = empty
-			}
-
-	*/
-	return nil
-}
-
-// Extract
-// func (me *Fhd) Extract(filename string) (string, error) {
-//	// must a/c for patches
-//	// returns new filename e.g. filename#1.ext and err
-// }
-
-func (me *Fhd) findSid(filename string) (int, error) {
-	var sid int
-	err := me.db.View(func(tx *bolt.Tx) error {
-		buck := tx.Bucket(SavesBucket)
-		if buck == nil {
-			return fmt.Errorf("failed to find %q", SavesBucket)
+			return fmt.Errorf("failed to find %q", savesBucket)
 		}
 		// TODO iterate key (sid) from last back to first using cursor
 		// check value bucket for matching filename & if found set sid &
 		// break
 		return nil
 	})
-	return sid, err
+	return sidInfo, err
+}
+
+// Returns the all the SIDs for the given filename.
+func (me *Fhd) SidsForFilename(filename string) ([]SidInfo, error) {
+	sidInfos := make([]SidInfo, 0)
+	return sidInfos, errors.New("SidsForFilename unimplemented") // TODO
+}
+
+// Writes the content of the given filename from the most recent Save to the
+// given writer.
+func (me *Fhd) Extract(filename string, writer io.Writer) error {
+	sidInfo, err := me.SidForFilename(filename)
+	if err != nil {
+		return err
+	}
+	return me.ExtractForSid(sidInfo.Sid(), filename, writer)
+}
+
+// Writes the content of the given filename from the specified Save
+// (identified by its SID) to the given writer.
+func (me *Fhd) ExtractForSid(sid int, filename string,
+	writer io.Writer) error {
+	return errors.New("ExtractForSid unimplemented") // TODO
 }

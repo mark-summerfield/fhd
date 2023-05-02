@@ -9,13 +9,13 @@ var (
 	//go:embed Version.dat
 	Version string
 
-	FileFormat byte = 1
+	fileFormat byte = 1
 
-	ConfigBucket = []byte("config")
-	StateBucket  = []byte("states")
-	SavesBucket  = []byte("saves")
+	configBucket = []byte("config")
+	stateBucket  = []byte("states")
+	savesBucket  = []byte("saves")
 
-	ConfigFormat = []byte("format")
+	configFormat = []byte("format")
 )
 
-const ModeUserRW = 0o600
+const modeUserRW = 0o600
