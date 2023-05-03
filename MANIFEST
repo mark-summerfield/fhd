@@ -1,3 +1,4 @@
+# TODO Entry: newEntry, Marshal, Unmarshal
 # TODO implement Dump()
 # TODO implement saveOne()
 # TODO implement Sids()
@@ -13,7 +14,8 @@
 
 fhd.go
 fhdx.go
-dbutil.go
+fhdutil.go
+entry.go
 state.go
 flag.go
 sidinfo.go
@@ -50,10 +52,6 @@ st.sh
 	    "*comment" string
 	    # then > 0 of:
 	    key filename string
-	    value struct { 
-		    sha256 []byte
-		    flag   byte # Raw | Flate | Lzw
-		    blob   []byte
-		    }
+	    value Entry
 
 # vim: syn=yaml

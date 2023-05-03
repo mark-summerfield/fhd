@@ -71,9 +71,9 @@ func (me *Fhd) Dump(writer io.Writer) error {
 			write("error: missing config\n")
 		} else {
 			format := config.Get(configFormat)
-			write("config/format=")
+			write("config\n  format=")
 			if len(format) == 0 {
-				write("nil [error]")
+				write("error (nil)")
 			} else {
 				writeRaw(format)
 			}
@@ -94,7 +94,21 @@ func (me *Fhd) Dump(writer io.Writer) error {
 			}
 
 		}
-		// TODO renamed
+		renamed := tx.Bucket(renamedBucket)
+		if renamed == nil {
+			write("error: missing renamed\n")
+		} else {
+			write("renamed:\n")
+			cursor := renamed.Cursor()
+			oldName, newName := cursor.First()
+			for ; oldName != nil; oldName, newName = cursor.Next() {
+				write("  ")
+				writeRaw(oldName)
+				write(" → ")
+				writeRaw(newName)
+				write("\n")
+			}
+		}
 		saves := tx.Bucket(savesBucket)
 		if saves == nil {
 			write("error: missing saves\n")
