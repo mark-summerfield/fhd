@@ -3,9 +3,7 @@
 
 package fhd
 
-import (
-	"time"
-)
+import "time"
 
 type SidInfo struct {
 	sid     uint64

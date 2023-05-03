@@ -5,20 +5,19 @@ package fhd
 
 const (
 	Raw Flag = iota
-	Patch
-	Gz
-	InOld
+	Flate
+	Lzw
 )
 
 type Flag byte
 
-func flagForSizes(rawSize, gzSize, patchSize int) Flag {
-	frawSize := float64(rawSize)
-	if (patchSize == 0 || gzSize < patchSize) &&
-		gzSize < int(frawSize*0.95) {
-		return Gz
-	} else if patchSize > 0 && patchSize < int(frawSize*0.9) {
-		return Patch
+func flagForSizes(rawSize, flateSize, lzwSize int) Flag {
+	maxSize := int(float64(rawSize) * 0.95)
+	if flateSize > maxSize && lzwSize > maxSize {
+		return Raw
 	}
-	return Raw
+	if flateSize < lzwSize {
+		return Flate
+	}
+	return Lzw
 }

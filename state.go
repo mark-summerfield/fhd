@@ -4,32 +4,31 @@
 package fhd
 
 var (
-	Ignored     StateKind = []byte{'I'}
-	Unmonitored StateKind = []byte{'U'}
 	Monitored   StateKind = []byte{'M'}
-	Renamed     StateKind = []byte{'R'}
+	Unmonitored StateKind = []byte{'U'}
+	Ignored     StateKind = []byte{'I'}
 )
 
 type StateKind []byte
 
+func (me *StateKind) String() string {
+	return string(*me)
+}
+
 func (me *StateKind) Equal(other StateKind) bool {
 	return len(*me) == 1 && len(other) == 1 && (*me)[0] == other[0]
-}
-
-func (me *StateKind) IsIgnored() bool {
-	return len(*me) == 1 && (*me)[0] == 'I'
-}
-
-func (me *StateKind) IsUnmonitored() bool {
-	return len(*me) == 1 && (*me)[0] == 'U'
 }
 
 func (me *StateKind) IsMonitored() bool {
 	return len(*me) == 1 && (*me)[0] == 'M'
 }
 
-func (me *StateKind) IsRenamed() bool {
-	return len(*me) == 1 && (*me)[0] == 'R'
+func (me *StateKind) IsUnmonitored() bool {
+	return len(*me) == 1 && (*me)[0] == 'U'
+}
+
+func (me *StateKind) IsIgnored() bool {
+	return len(*me) == 1 && (*me)[0] == 'I'
 }
 
 type StateData struct {
@@ -49,18 +48,14 @@ func (me *StateData) Filename() string {
 	return me.filename
 }
 
-func (me *StateData) IsIgnored() bool {
-	return me.state.IsIgnored()
+func (me *StateData) IsMonitored() bool {
+	return me.state.IsMonitored()
 }
 
 func (me *StateData) IsUnmonitored() bool {
 	return me.state.IsUnmonitored()
 }
 
-func (me *StateData) IsMonitored() bool {
-	return me.state.IsMonitored()
-}
-
-func (me *StateData) IsRenamed() bool {
-	return me.state.IsRenamed()
+func (me *StateData) IsIgnored() bool {
+	return me.state.IsIgnored()
 }

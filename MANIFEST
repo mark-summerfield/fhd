@@ -1,5 +1,4 @@
-# TODO test State() & setState() since they work purely on data
-# TODO test Monitored(), Unmonitored(), Ignored() - ditto
+# TODO implement Dump()
 # TODO implement saveOne()
 # TODO implement Sids()
 # TODO implement SidForFilename()
@@ -7,9 +6,14 @@
 # TODO implement Extract()
 # TODO implement ExtractForSid()
 # TODO implement Rename()
+# TODO implement Compact()
+# TODO implement Delete()
+# TODO test State() & setState() since they work purely on data
+# TODO test Monitored(), Unmonitored(), Ignored() - ditto
 
-fhd.go # TODO 
-fhdx.go # TODO
+fhd.go
+fhdx.go
+dbutil.go
 state.go
 flag.go
 sidinfo.go
@@ -18,21 +22,13 @@ consts.go
 
 fhd_test.go
 
+go.mod
+
 README.md
 
 st.sh
 
-# Libs
-
-- Key-Value store: https://pkg.go.dev/go.etcd.io/bbolt
-- Diff/Patch: https://pkg.go.dev/github.com/kr/binarydist
-
-
 # NOTE
-
-The `fhd` package allows its clients to do the following (where _files_ is
-short for "all files or one or more specified files" and _fid_ is short for
-"one or more specified file identifiers, i.e., filename and sid (save ID)"):
 
     "config" bucket
 	key string # e.g., key='format' value=1
@@ -40,7 +36,12 @@ short for "all files or one or more specified files" and _fid_ is short for
 
     "states" bucket
 	key filename string
-	value state enum # monitored unmonitored ignored renamed
+	value state enum # monitored unmonitored ignored
+	# if renamed only keep newname here
+
+    "renamed" bucket # ???
+	key oldname string
+	value newname string
 
     "saves" bucket
 	key sid int # > 0
@@ -48,36 +49,11 @@ short for "all files or one or more specified files" and _fid_ is short for
 	    "*when" time.Time
 	    "*comment" string
 	    # then > 0 of:
-	    key filename string # see below for special cases
+	    key filename string
 	    value struct { 
-		    blob []byte
-		    flag byte # Raw | Patch | Gz | InOld
 		    sha256 []byte
-		    oldSid int # > 0 if content and sha256 are empty (see below)
-		    oldFilename string # nonempty if oldSid > 0 AND oldFilename != filename
+		    flag   byte # Raw | Flate | Lzw
+		    blob   []byte
 		    }
-
-# Maybe out of date
-The initial monitor creates the STATE and SAVES, populates STATE setting
-state to monitored and then does a save. It creates a new sid and
-corresponding value bucket and sets the bucket's `*when` and `*comment`
-and for each file adds the filename as key and sets its value struct's
-content to the file's content, sha256 to the content's sha256, and the
-oldSid to 0.
-
-On subsequent saves the filenames to use are all those in STATE whose
-state is monitored. For each file to save generate its sha256 and
-compare that with the sha256s of its predecessor (or predecessor's
-predecessor if its predecessor's oldSid > 0, and so on) - if a match is
-found, set content and sha256 to empty and oldSid to the matched one;
-otherwise populate content and the sha256 and set oldSid to 0.
-
-Renaming
-- create a new save, and in value bucket key=newfilename,
-  value content = sha256 = empty, oldSid & oldFilename point to previous
-  save's sid and filename
-- in states, set oldname's state to Renamed; add newname with state of
-  Monitored
-
 
 # vim: syn=yaml

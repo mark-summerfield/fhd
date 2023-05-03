@@ -14,14 +14,13 @@ import (
 // setState sets the state of every given file the the given state except as
 // folows.
 // If state is Ignored: if a file's current state is Monitored, its state
-// will be set to Unmonitored, and if its current state is Renamed, its
-// state won't change.
+// will be set to Unmonitored.
 // Can only go from Monitored to Unmonitored, not Ignored.
 func (me *Fhd) setState(state StateKind, filenames ...string) error {
 	return me.db.Update(func(tx *bolt.Tx) error {
-		states := tx.Bucket(stateBucket)
+		states := tx.Bucket(statesBucket)
 		if states == nil {
-			return fmt.Errorf("failed to find %q", stateBucket)
+			return fmt.Errorf("failed to find %q", statesBucket)
 		}
 		var err error
 		for _, filename := range filenames {
@@ -31,13 +30,9 @@ func (me *Fhd) setState(state StateKind, filenames ...string) error {
 			if oldState != nil {
 				if newState.Equal(Unmonitored) && oldState.Equal(Ignored) {
 					continue // Ignored is implicitly Unmonitored
-				} else if newState.Equal(Ignored) {
-					if oldState.Equal(Renamed) {
-						continue // Can't go from Renamed to Ignored
-					}
-					if oldState.Equal(Monitored) {
-						newState = Unmonitored
-					}
+				} else if newState.Equal(Ignored) &&
+					oldState.Equal(Monitored) {
+					newState = Unmonitored
 				}
 			}
 			if ierr := states.Put(key, newState); ierr != nil {
@@ -48,12 +43,12 @@ func (me *Fhd) setState(state StateKind, filenames ...string) error {
 	})
 }
 
-func (me *Fhd) stateOf(state StateKind) ([]string, error) {
+func (me *Fhd) hasState(state StateKind) ([]string, error) {
 	monitored := make([]string, 0)
 	err := me.db.View(func(tx *bolt.Tx) error {
-		states := tx.Bucket(stateBucket)
+		states := tx.Bucket(statesBucket)
 		if states == nil {
-			return fmt.Errorf("failed to find %q", stateBucket)
+			return fmt.Errorf("failed to find %q", statesBucket)
 		}
 		cursor := states.Cursor()
 		rawFilename, rawState := cursor.First()
@@ -86,41 +81,26 @@ func (me *Fhd) nextSid(comment string) (SidInfo, error) {
 	return newSidInfo(sid, time.Now(), comment), nil
 }
 
-func (me *Fhd) saveOne(sid uint64, filename string) error {
-	return fmt.Errorf("saveOne unimplemented %d %q", sid, filename) // TODO
+func (me *Fhd) maybeSaveOne(sid uint64, filename string) error {
+	return fmt.Errorf("maybeSaveOne unimplemented %d %q", sid, filename) // TODO
 	/*
-		new data = read filename's content
-		find filename in saves (should be in last save, i.e., most recent sid, foundSid)
-		create 2 or 3 goroutines
-			- compute sha256 for new data -> ([]byte, Raw)
-			- gzip data -> ([]byte, Gz)
-			- if found, patch (diff, old data) -> ([]byte, Patch)
-		flag := flagForSizes(len(raw), len(gz), len(patch))
+		data = read filename's content
+		create 3 goroutines to compute data's
+			- sha256
+			- flate
+			- lzw
+		find previous sha256
+		if previous sha256 == sha256:
+			return nil # don't save duplicate
+		flag := flagForSizes(len(raw), len(flate), len(lzw))
 		switch {
-			case new sha256 == old sha256: # unchanged data
-				blob = sha256 → empty
-				flag = InOld
-				oldSid = foundSid
-				oldFilename = empty
-			case flag == Raw: # new content
+			case flag == Raw: # new content, no benefit from compression
 				blob = new content
-				flag = Raw
-				sha256 = new sha256
-				oldSid = 0
-				oldFilename = empty
-			case flag == Gz:
-				blob = gzipped
-				sha256 = new sha256 # to check ungzip
-				flag = Gz
-				oldSid = 0
-				oldFilename = empty
-			case flag == Patch
-				blob = patch
-				sha256 = new sha256 # to check old blob + patch
-				flag = Patch
-				oldSid = foundSid
-				oldFilename = empty
-			}
-
+			case flag == Flate:
+				blob = flate
+			case flag == Lzw
+				blob = lzw
+		}
+		return nil
 	*/
 }

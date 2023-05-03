@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"time"
 
 	bolt "go.etcd.io/bbolt"
 )
@@ -28,6 +27,11 @@ func New(filename string) (*Fhd, error) {
 // Close closes the underlying database.
 func (me *Fhd) Close() error {
 	return me.db.Close()
+}
+
+// See also Dump.
+func (me *Fhd) String() string {
+	return fmt.Sprintf("<Fhd filename=%q>", me.db.Path())
 }
 
 // Filename returns the underlying database's filename.
@@ -58,9 +62,9 @@ func (me *Fhd) FileFormat() (int, error) {
 func (me *Fhd) State() ([]*StateData, error) {
 	stateData := make([]*StateData, 0)
 	err := me.db.View(func(tx *bolt.Tx) error {
-		states := tx.Bucket(stateBucket)
+		states := tx.Bucket(statesBucket)
 		if states == nil {
-			return fmt.Errorf("failed to find %q", stateBucket)
+			return fmt.Errorf("failed to find %q", statesBucket)
 		}
 		cursor := states.Cursor()
 		rawFilename, rawState := cursor.First()
@@ -79,19 +83,19 @@ func (me *Fhd) State() ([]*StateData, error) {
 // Monitored returns the list of every monitored file.
 // See also State.
 func (me *Fhd) Monitored() ([]string, error) {
-	return me.stateOf(Monitored)
+	return me.hasState(Monitored)
 }
 
 // Unmonitored returns the list of every unmonitored file.
 // See also State.
 func (me *Fhd) Unmonitored() ([]string, error) {
-	return me.stateOf(Unmonitored)
+	return me.hasState(Unmonitored)
 }
 
 // Ignored returns the list of every ignored file.
 // See also State.
 func (me *Fhd) Ignored() ([]string, error) {
-	return me.stateOf(Ignored)
+	return me.hasState(Ignored)
 }
 
 // Monitor sets the given files to be monitored _and_ does an initial Save.
@@ -132,8 +136,8 @@ func (me *Fhd) Ignore(filenames ...string) error {
 	return me.setState(Ignored, filenames...)
 }
 
-// Save saves a snapshot of every monitored file and returns the
-// corresponding Save ID (SID).
+// Save saves a snapshot of every monitored file that's changed, and returns
+// the corresponding Save ID (SID).
 func (me *Fhd) Save(comment string) (SidInfo, error) {
 	monitored, err := me.Monitored()
 	if err != nil {
@@ -145,15 +149,11 @@ func (me *Fhd) Save(comment string) (SidInfo, error) {
 	}
 	sid := sidInfo.Sid()
 	for _, filename := range monitored {
-		if ierr := me.saveOne(sid, filename); ierr != nil {
+		if ierr := me.maybeSaveOne(sid, filename); ierr != nil {
 			err = errors.Join(err, ierr)
 		}
 	}
 	return sidInfo, err
-}
-
-func (me *Fhd) Rename(oldFilename, newFilename string) error {
-	return errors.New("Rename unimplemented") // TODO
 }
 
 // Returns the most recent Save ID (SID).
@@ -168,12 +168,10 @@ func (me *Fhd) Sid() (SidInfo, error) {
 		sid, _ := cursor.Last()
 		save := saves.Bucket(sid)
 		if save != nil {
-			var when time.Time
 			rawWhen := save.Get(savesWhen)
-			if rawWhen != nil {
-				if err := when.UnmarshalBinary(rawWhen); err != nil {
-					return err
-				}
+			when, err := timeForRaw(rawWhen)
+			if err != nil {
+				return err
 			}
 			var comment string
 			rawComment := save.Get(savesComment)
@@ -237,4 +235,28 @@ func (me *Fhd) Extract(filename string, writer io.Writer) error {
 func (me *Fhd) ExtractForSid(sid uint64, filename string,
 	writer io.Writer) error {
 	return errors.New("ExtractForSid unimplemented") // TODO
+}
+
+// Rename renames oldFilename to newFilename.
+func (me *Fhd) Rename(oldFilename, newFilename string) error {
+	return errors.New("Rename unimplemented") // TODO
+}
+
+// Compact eliminates wasted space in the .fhd file.
+func (me *Fhd) Compact() error {
+	// temp := me.db.Path() + ".$$$"
+	// me.db.CopyFile(temp)
+	// move me.db.Path() to tempdir/tempname
+	// rename temp dropping ".$$$"
+	// delete tempdir/tempname
+	return errors.New("Compact unimplemented") // TODO
+}
+
+// DeleteHistory deletes the history of the given file, leaving only the
+// most recent save, unless all is true in which case it is completely
+// deleted.
+func (me *Fhd) Delete(filename string, all bool) error {
+	// Delete all but most recent save of filename (also accounting for
+	// renaming?), and also most recent save if all is true
+	return errors.New("Delete unimplemented") // TODO
 }

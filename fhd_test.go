@@ -30,13 +30,16 @@ func TestOpen(t *testing.T) {
 			t.Errorf("expected %q, got %q", filename, actual)
 		}
 		err = fhd.db.View(func(tx *bolt.Tx) error {
-			if buck := tx.Bucket(configBucket); buck == nil {
+			if config := tx.Bucket(configBucket); config == nil {
 				t.Error("expected configBucket, got nil")
 			}
-			if buck := tx.Bucket(stateBucket); buck == nil {
-				t.Error("expected stateBucket, got nil")
+			if states := tx.Bucket(statesBucket); states == nil {
+				t.Error("expected statesBucket, got nil")
 			}
-			if buck := tx.Bucket(savesBucket); buck == nil {
+			if renames := tx.Bucket(renamedBucket); renames == nil {
+				t.Error("expected renamedBucket, got nil")
+			}
+			if saves := tx.Bucket(savesBucket); saves == nil {
 				t.Error("expected savesBucket, got nil")
 			}
 			if buck := tx.Bucket([]byte{'x'}); buck != nil {
@@ -58,33 +61,18 @@ func TestOpen(t *testing.T) {
 }
 
 func TestFlagForSizes(t *testing.T) {
-	if flag := flagForSizes(1000, 600, 0); flag != Gz {
-		t.Errorf("expected Gz, got %v", flag)
+	if flag := flagForSizes(1000, 997, 998); flag != Raw {
+		t.Errorf("expected Raw, got %v", flag)
 	}
-	if flag := flagForSizes(1000, 970, 0); flag != Raw {
-		t.Errorf("expected Gz, got %v", flag)
+	if flag := flagForSizes(1000, 945, 998); flag != Flate {
+		t.Errorf("expected Flate, got %v", flag)
 	}
-	if flag := flagForSizes(1000, 600, 700); flag != Gz {
-		t.Errorf("expected Gz, got %v", flag)
-	}
-	if flag := flagForSizes(1000, 970, 900); flag != Raw {
-		t.Errorf("expected Gz, got %v", flag)
-	}
-	if flag := flagForSizes(1000, 600, 500); flag != Patch {
-		t.Errorf("expected Gz, got %v", flag)
-	}
-	if flag := flagForSizes(1000, 970, 800); flag != Patch {
-		t.Errorf("expected Gz, got %v", flag)
-	}
-	if flag := flagForSizes(1000, 600, 400); flag != Patch {
-		t.Errorf("expected Gz, got %v", flag)
-	}
-	if flag := flagForSizes(1000, 970, 800); flag != Patch {
-		t.Errorf("expected Gz, got %v", flag)
+	if flag := flagForSizes(1000, 998, 949); flag != Lzw {
+		t.Errorf("expected Lzw, got %v", flag)
 	}
 }
 
-func TestTest(t *testing.T) {
+func TestSidSequence(t *testing.T) {
 	filename := filepath.Join(os.TempDir(), "temp2.fhd")
 	fhd, err := New(filename)
 	defer func() { _ = fhd.Close() }()
