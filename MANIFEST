@@ -9,6 +9,7 @@
 # TODO implement Rename()
 # TODO implement Compact()
 # TODO implement Delete()
+# TODO implement Purge()
 # TODO test State() & setState() since they work purely on data
 # TODO test Monitored(), Unmonitored(), Ignored() - ditto
 

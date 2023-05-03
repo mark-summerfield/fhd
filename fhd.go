@@ -252,11 +252,15 @@ func (me *Fhd) Compact() error {
 	return errors.New("Compact unimplemented") // TODO
 }
 
-// DeleteHistory deletes the history of the given file, leaving only the
-// most recent save, unless all is true in which case it is completely
-// deleted.
-func (me *Fhd) Delete(filename string, all bool) error {
-	// Delete all but most recent save of filename (also accounting for
-	// renaming?), and also most recent save if all is true
+// Delete deletes the given file in the given save.
+// If this is the only occurrence of the file, the file's state is set to
+// Ignored.
+func (me *Fhd) Delete(sid int, filename string) error {
 	return errors.New("Delete unimplemented") // TODO
+}
+
+// Purges deletes every save of the given file and sets the file's state is
+// set to Ignored.
+func (me *Fhd) Purge(filename string) error {
+	return errors.New("Purge unimplemented") // TODO
 }
