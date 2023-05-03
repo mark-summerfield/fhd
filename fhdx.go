@@ -44,7 +44,7 @@ func (me *Fhd) setState(state StateKind, filenames ...string) error {
 }
 
 func (me *Fhd) hasState(state StateKind) ([]string, error) {
-	monitored := make([]string, 0)
+	filenames := make([]string, 0)
 	err := me.db.View(func(tx *bolt.Tx) error {
 		states := tx.Bucket(statesBucket)
 		if states == nil {
@@ -54,7 +54,7 @@ func (me *Fhd) hasState(state StateKind) ([]string, error) {
 		rawFilename, rawState := cursor.First()
 		for ; rawFilename != nil; rawFilename, rawState = cursor.Next() {
 			if state.Equal(StateKind(rawState)) {
-				monitored = append(monitored, string(rawFilename))
+				filenames = append(filenames, string(rawFilename))
 			}
 		}
 		return nil
@@ -62,10 +62,10 @@ func (me *Fhd) hasState(state StateKind) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return monitored, nil
+	return filenames, nil
 }
 
-func (me *Fhd) nextSid(comment string) (SidInfo, error) {
+func (me *Fhd) newSid(comment string) (SidInfo, error) {
 	var sid uint64
 	err := me.db.Update(func(tx *bolt.Tx) error {
 		saves := tx.Bucket(savesBucket)

@@ -143,7 +143,7 @@ func (me *Fhd) Save(comment string) (SidInfo, error) {
 	if err != nil {
 		return newInvalidSidInfo(), err
 	}
-	sidInfo, err := me.nextSid(comment)
+	sidInfo, err := me.newSid(comment)
 	if err != nil {
 		return newInvalidSidInfo(), err
 	}

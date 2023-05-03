@@ -81,7 +81,7 @@ func TestSidSequence(t *testing.T) {
 		t.Errorf("unexpected error: %s", err)
 	} else {
 		expected := "save #1"
-		sidInfo, err := fhd.nextSid(expected)
+		sidInfo, err := fhd.newSid(expected)
 		if err != nil {
 			t.Errorf("unexpected error: %s", err)
 		}

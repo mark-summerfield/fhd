@@ -152,7 +152,8 @@ func (me *Fhd) Dump(writer io.Writer) error {
 						// TODO unmarshall data: sha256 flag blob
 						// write flag (as a string), sha256, elided blob if
 						// mimetype HasPrefix "text/" (see
-						// net/http.DetectContentType())
+						// net/http.DetectContentType()) else just print its
+						// length
 						write("\n")
 					}
 				}

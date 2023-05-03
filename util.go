@@ -9,15 +9,15 @@ import (
 	"time"
 )
 
-func utob(v uint64) []byte {
-	b := make([]byte, 8)
-	binary.BigEndian.PutUint64(b, v)
-	return b
+func utob(u uint64) []byte {
+	raw := make([]byte, 8)
+	binary.BigEndian.PutUint64(raw, u)
+	return raw
 }
 
-func btou(b []byte) (uint64, error) {
+func btou(raw []byte) (uint64, error) {
 	var u uint64
-	buf := bytes.NewReader(b)
+	buf := bytes.NewReader(raw)
 	err := binary.Read(buf, binary.BigEndian, &u)
 	if err != nil {
 		return 0, err
@@ -25,7 +25,7 @@ func btou(b []byte) (uint64, error) {
 	return u, nil
 }
 
-// rawForTime is t.MarshalBinary()
+// rawForTime is: time.Time.MarshalBinary()
 func timeForRaw(raw []byte) (time.Time, error) {
 	var t time.Time
 	err := t.UnmarshalBinary(raw)
