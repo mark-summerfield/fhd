@@ -23,11 +23,16 @@ func (me Flag) String() string {
 
 func flagForSizes(rawSize, flateSize, lzwSize int) Flag {
 	maxSize := int(float64(rawSize) * 0.95)
-	if flateSize > maxSize && lzwSize > maxSize {
+	if (flateSize > maxSize && lzwSize > maxSize) || (flateSize == 0 &&
+		lzwSize == 0) {
 		return Raw
 	}
-	if flateSize < lzwSize {
+	if flateSize > 0 && flateSize < maxSize && (lzwSize == 0 ||
+		(lzwSize > 0 && flateSize < lzwSize)) {
 		return Flate
 	}
-	return Lzw
+	if lzwSize > 0 && lzwSize < maxSize {
+		return Lzw
+	}
+	return Raw
 }

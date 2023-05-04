@@ -20,8 +20,8 @@ type Entry struct {
 	Blob   []byte
 }
 
-func newEntry(sha256 SHA256, flag Flag, blob []byte) *Entry {
-	return &Entry{Sha256: sha256, Flag: flag, Blob: blob}
+func newEntry(sha256 SHA256, flag Flag) *Entry {
+	return &Entry{Sha256: sha256, Flag: flag}
 }
 
 func UnmarshalEntry(raw []byte) *Entry {

@@ -149,11 +149,19 @@ func (me *Fhd) Save(comment string) (SidInfo, error) {
 		return newInvalidSidInfo(), err
 	}
 	sid := sidInfo.Sid()
-	for _, filename := range monitored {
-		if ierr := me.maybeSaveOne(sid, filename); ierr != nil {
-			err = errors.Join(err, ierr)
+	err = me.db.Update(func(tx *bolt.Tx) error {
+		saves := tx.Bucket(savesBucket)
+		if saves == nil {
+			return errors.New("missing saves")
 		}
-	}
+		var err error
+		for _, filename := range monitored {
+			if ierr := me.maybeSaveOne(saves, sid, filename); ierr != nil {
+				err = errors.Join(err, ierr)
+			}
+		}
+		return err
+	})
 	return sidInfo, err
 }
 

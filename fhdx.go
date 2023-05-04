@@ -127,26 +127,29 @@ func (me *Fhd) newSid(comment string) (SidInfo, error) {
 	return newSidInfo(sid, time.Now(), comment), nil
 }
 
-func (me *Fhd) maybeSaveOne(sid uint64, filename string) error {
-	return fmt.Errorf("maybeSaveOne unimplemented %d %q", sid, filename) // TODO
-	/*
-		data = read filename's content
-		create 3 goroutines to compute data's
-			- sha256
-			- flate
-			- lzw
-		find previous sha256
-		if previous sha256 == sha256:
-			return nil # don't save duplicate
-		flag := flagForSizes(len(raw), len(flate), len(lzw))
-		switch {
-			case flag == Raw: # new content, no benefit from compression
-				blob = new content
-			case flag == Flate:
-				blob = flate
-			case flag == Lzw
-				blob = lzw
-		}
-		return nil
-	*/
+func (me *Fhd) maybeSaveOne(saves *bolt.Bucket, sid uint64,
+	filename string) error {
+	var sha, prevSha SHA256
+	raw, rawFlate, rawLzw, err := getRaws(filename, &sha)
+	if err != nil {
+		return err
+	}
+	flag := flagForSizes(len(raw), len(rawFlate), len(rawLzw))
+	me.findPrevSha(sid, filename, &prevSha)
+	if sha == prevSha {
+		return nil // Don't save duplicate.
+	}
+	entry := newEntry(sha, flag)
+	switch flag {
+	case Raw:
+		entry.Blob = raw
+	case Flate:
+		entry.Blob = rawFlate
+	case Lzw:
+		entry.Blob = rawLzw
+	}
+	return saves.Put(utob(sid), entry.Marshal())
+}
+
+func (me *Fhd) findPrevSha(sid uint64, filename string, prevSha *SHA256) {
 }

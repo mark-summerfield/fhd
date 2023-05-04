@@ -62,13 +62,25 @@ func TestOpen(t *testing.T) {
 
 func TestFlagForSizes(t *testing.T) {
 	if flag := flagForSizes(1000, 997, 998); flag != Raw {
-		t.Errorf("expected Raw, got %v", flag)
+		t.Errorf("expected Raw, got %s", flag)
 	}
 	if flag := flagForSizes(1000, 945, 998); flag != Flate {
-		t.Errorf("expected Flate, got %v", flag)
+		t.Errorf("expected Flate, got %s", flag)
 	}
 	if flag := flagForSizes(1000, 998, 949); flag != Lzw {
-		t.Errorf("expected Lzw, got %v", flag)
+		t.Errorf("expected Lzw, got %s", flag)
+	}
+	if flag := flagForSizes(1000, 0, 990); flag != Raw {
+		t.Errorf("expected Raw, got %s", flag)
+	}
+	if flag := flagForSizes(1000, 990, 0); flag != Raw {
+		t.Errorf("expected Raw, got %s", flag)
+	}
+	if flag := flagForSizes(1000, 889, 0); flag != Flate {
+		t.Errorf("expected Flate, got %s", flag)
+	}
+	if flag := flagForSizes(1000, 0, 889); flag != Lzw {
+		t.Errorf("expected Lzw, got %s", flag)
 	}
 }
 
