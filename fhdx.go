@@ -8,8 +8,54 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/mark-summerfield/gong"
 	bolt "go.etcd.io/bbolt"
 )
+
+func newDb(filename string) (*bolt.DB, error) {
+	db, err := bolt.Open(filename, gong.ModeUserRW, nil)
+	if err != nil {
+		return nil, err
+	}
+	err = db.Update(func(tx *bolt.Tx) error {
+		config, err := tx.CreateBucketIfNotExists(configBucket)
+		if err != nil {
+			return fmt.Errorf("failed to create bucket %q: %s",
+				configBucket, err)
+		}
+		if format := config.Get(configFormat); len(format) != 1 {
+			if err = config.Put(configFormat,
+				[]byte{fileFormat}); err != nil {
+				return fmt.Errorf("failed to initialize %q file format: %s",
+					configBucket, err)
+			}
+		}
+		_, err = tx.CreateBucketIfNotExists(statesBucket)
+		if err != nil {
+			return fmt.Errorf("failed to create bucket %q: %s",
+				statesBucket, err)
+		}
+		_, err = tx.CreateBucketIfNotExists(renamedBucket)
+		if err != nil {
+			return fmt.Errorf("failed to create bucket %q: %s",
+				renamedBucket, err)
+		}
+		saves, err := tx.CreateBucketIfNotExists(savesBucket)
+		if err != nil {
+			return fmt.Errorf("failed to create bucket %q: %s", savesBucket,
+				err)
+		}
+		return saves.SetSequence(0) // next i.e., first used, will be 1.
+	})
+	if err != nil {
+		closeErr := db.Close()
+		if closeErr != nil {
+			return nil, errors.Join(err, closeErr)
+		}
+		return nil, err
+	}
+	return db, nil
+}
 
 // setState sets the state of every given file the the given state except as
 // folows.
@@ -43,7 +89,7 @@ func (me *Fhd) setState(state StateKind, filenames ...string) error {
 	})
 }
 
-func (me *Fhd) hasState(state StateKind) ([]string, error) {
+func (me *Fhd) haveState(state StateKind) ([]string, error) {
 	filenames := make([]string, 0)
 	err := me.db.View(func(tx *bolt.Tx) error {
 		states := tx.Bucket(statesBucket)

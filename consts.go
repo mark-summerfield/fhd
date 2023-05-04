@@ -9,7 +9,7 @@ var (
 	//go:embed Version.dat
 	Version string
 
-	fileFormat byte = '1'
+	fileFormat byte = 1
 
 	configBucket  = []byte("config")
 	statesBucket  = []byte("states")

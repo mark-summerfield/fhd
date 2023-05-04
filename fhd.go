@@ -31,7 +31,8 @@ func (me *Fhd) Close() error {
 
 // See also Dump.
 func (me *Fhd) String() string {
-	return fmt.Sprintf("<Fhd filename=%q>", me.db.Path())
+	format, _ := me.FileFormat()
+	return fmt.Sprintf("<Fhd filename=%q format=%d>", me.db.Path(), format)
 }
 
 // Filename returns the underlying database's filename.
@@ -57,9 +58,9 @@ func (me *Fhd) FileFormat() (int, error) {
 	return int(fileformat), nil
 }
 
-// State returns the state of every known file.
+// States returns the state of every known file.
 // See also Monitored, Unmonitored, and Ignored.
-func (me *Fhd) State() ([]*StateData, error) {
+func (me *Fhd) States() ([]*StateData, error) {
 	stateData := make([]*StateData, 0)
 	err := me.db.View(func(tx *bolt.Tx) error {
 		states := tx.Bucket(statesBucket)
@@ -83,19 +84,19 @@ func (me *Fhd) State() ([]*StateData, error) {
 // Monitored returns the list of every monitored file.
 // See also State.
 func (me *Fhd) Monitored() ([]string, error) {
-	return me.hasState(Monitored)
+	return me.haveState(Monitored)
 }
 
 // Unmonitored returns the list of every unmonitored file.
 // See also State.
 func (me *Fhd) Unmonitored() ([]string, error) {
-	return me.hasState(Unmonitored)
+	return me.haveState(Unmonitored)
 }
 
 // Ignored returns the list of every ignored file.
 // See also State.
 func (me *Fhd) Ignored() ([]string, error) {
-	return me.hasState(Ignored)
+	return me.haveState(Ignored)
 }
 
 // Monitor sets the given files to be monitored _and_ does an initial Save.
