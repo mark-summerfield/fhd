@@ -129,16 +129,15 @@ func (me *Fhd) newSid(comment string) (SidInfo, error) {
 
 func (me *Fhd) maybeSaveOne(saves *bolt.Bucket, sid uint64,
 	filename string) error {
-	var sha, prevSha SHA256
+	var sha SHA256
 	raw, rawFlate, rawLzw, err := getRaws(filename, &sha)
 	if err != nil {
 		return err
 	}
-	flag := flagForSizes(len(raw), len(rawFlate), len(rawLzw))
-	me.findPrevSha(sid, filename, &prevSha)
-	if sha == prevSha {
-		return nil // Don't save duplicate.
+	if me.sameAsPrev(sid, filename, &sha) {
+		return nil // No need to save if same as before.
 	}
+	flag := flagForSizes(len(raw), len(rawFlate), len(rawLzw))
 	entry := newEntry(sha, flag)
 	switch flag {
 	case Raw:
@@ -151,5 +150,9 @@ func (me *Fhd) maybeSaveOne(saves *bolt.Bucket, sid uint64,
 	return saves.Put(utob(sid), entry.Marshal())
 }
 
-func (me *Fhd) findPrevSha(sid uint64, filename string, prevSha *SHA256) {
+func (me *Fhd) sameAsPrev(newSid uint64, filename string,
+	newSha *SHA256) bool {
+	// search from Last sid back to first excl. newSid until there's a
+	// filename match; then return that entry's sha == *newSha
+	return false // TODO
 }

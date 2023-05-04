@@ -1,4 +1,4 @@
-# TODO implement maybeSaveOne()
+# TODO implement sameAsPrev()
 # TODO implement Sids()
 # TODO implement SidForFilename()
 # TODO implement SidsForFilename()
@@ -12,7 +12,7 @@
 # TODO test Monitored(), Unmonitored(), Ignored() - ditto
 
 fhd.go
-fhdx.go
+fhdx.go # TODO sameAsPrev()
 dump.go
 entry.go
 state.go

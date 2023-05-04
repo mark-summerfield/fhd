@@ -15,23 +15,23 @@ import (
 type SHA256 [sha256.Size]byte
 
 type Entry struct {
-	Sha256 SHA256
-	Flag   Flag
-	Blob   []byte
+	Sha  SHA256
+	Flag Flag
+	Blob []byte
 }
 
-func newEntry(sha256 SHA256, flag Flag) *Entry {
-	return &Entry{Sha256: sha256, Flag: flag}
+func newEntry(sha SHA256, flag Flag) *Entry {
+	return &Entry{Sha: sha, Flag: flag}
 }
 
 func UnmarshalEntry(raw []byte) *Entry {
-	return &Entry{Sha256: SHA256(raw[:sha256.Size]),
+	return &Entry{Sha: SHA256(raw[:sha256.Size]),
 		Flag: Flag(raw[sha256.Size]), Blob: raw[sha256.Size+1:]}
 }
 
 func (me *Entry) Marshal() []byte {
 	raw := make([]byte, 0, sha256.Size+1+len(me.Blob))
-	raw = append(raw, me.Sha256[:]...)
+	raw = append(raw, me.Sha[:]...)
 	raw = append(raw, byte(me.Flag))
 	return append(raw, me.Blob...)
 }
@@ -39,7 +39,7 @@ func (me *Entry) Marshal() []byte {
 // String is for Dump() and debugging.
 func (me *Entry) String() string {
 	var text strings.Builder
-	text.WriteString(fmt.Sprintf("SHA256=%v %s ", me.Sha256, me.Flag))
+	text.WriteString(fmt.Sprintf("SHA256=%v %s ", me.Sha, me.Flag))
 	if me.Flag == Raw && strings.HasPrefix(
 		http.DetectContentType(me.Blob), "text") {
 		text.WriteByte('"')
@@ -47,7 +47,7 @@ func (me *Entry) String() string {
 		text.WriteByte('"')
 	} else {
 		text.WriteString(gong.Commas(len(me.Blob)))
-		text.WriteString("bytes")
+		text.WriteString(" bytes")
 	}
 	return text.String()
 }
