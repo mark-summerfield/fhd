@@ -6,6 +6,7 @@ package fhd
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/mark-summerfield/gong"
@@ -70,7 +71,7 @@ func (me *Fhd) setState(state StateKind, filenames ...string) error {
 		}
 		var err error
 		for _, filename := range filenames {
-			key := []byte(filename)
+			key := []byte(me.relativePath(filename))
 			newState := state
 			oldState := StateKind(states.Get(key))
 			if oldState != nil {
@@ -134,7 +135,7 @@ func (me *Fhd) maybeSaveOne(saves *bolt.Bucket, sid uint64,
 	if err != nil {
 		return err
 	}
-	if me.sameAsPrev(sid, filename, &sha) {
+	if me.sameAsPrev(saves, sid, filename, &sha) {
 		return nil // No need to save if same as before.
 	}
 	flag := flagForSizes(len(raw), len(rawFlate), len(rawLzw))
@@ -150,9 +151,30 @@ func (me *Fhd) maybeSaveOne(saves *bolt.Bucket, sid uint64,
 	return saves.Put(utob(sid), entry.Marshal())
 }
 
-func (me *Fhd) sameAsPrev(newSid uint64, filename string,
-	newSha *SHA256) bool {
-	// search from Last sid back to first excl. newSid until there's a
-	// filename match; then return that entry's sha == *newSha
-	return false // TODO
+func (me *Fhd) sameAsPrev(saves *bolt.Bucket, newSid uint64,
+	filename string, newSha *SHA256) bool {
+	entry := me.findLatestEntry(saves, filename)
+	if entry == nil {
+		return false // There is no previous entry for this filename.
+	}
+	return entry.Sha == *newSha
+}
+
+func (me *Fhd) findLatestEntry(saves *bolt.Bucket, filename string) *Entry {
+	cursor := saves.Cursor()
+	rawFilename, rawEntry := cursor.Last()
+	for ; rawFilename != nil; rawFilename, rawEntry = cursor.Prev() {
+		if string(rawFilename) == filename {
+			return UnmarshalEntry(rawEntry)
+		}
+	}
+	return nil
+}
+
+func (me *Fhd) relativePath(filename string) string {
+	relPath, err := filepath.Rel(filepath.Dir(me.db.Path()), filename)
+	if err != nil {
+		return filepath.Clean(filename)
+	}
+	return relPath
 }

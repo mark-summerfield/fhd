@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/mark-summerfield/gong"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -17,7 +18,7 @@ type Fhd struct {
 
 // New opens (and creates if necessary) the given .fhd file ready for use.
 func New(filename string) (*Fhd, error) {
-	db, err := newDb(filename)
+	db, err := newDb(gong.AbsPath(filename))
 	if err != nil {
 		return nil, err
 	}
@@ -209,6 +210,7 @@ func (me *Fhd) Sids() ([]SidInfo, error) {
 
 // Returns the most recent SID for the given filename.
 func (me *Fhd) SidForFilename(filename string) (SidInfo, error) {
+	//filename = me.relativePath(filename) // TODO
 	var sidInfo SidInfo
 	err := me.db.View(func(tx *bolt.Tx) error {
 		saves := tx.Bucket(savesBucket)
@@ -225,6 +227,7 @@ func (me *Fhd) SidForFilename(filename string) (SidInfo, error) {
 
 // Returns the all the SIDs for the given filename.
 func (me *Fhd) SidsForFilename(filename string) ([]SidInfo, error) {
+	//filename = me.relativePath(filename) // TODO
 	sidInfos := make([]SidInfo, 0)
 	return sidInfos, errors.New("SidsForFilename unimplemented") // TODO
 }
@@ -232,6 +235,7 @@ func (me *Fhd) SidsForFilename(filename string) ([]SidInfo, error) {
 // Writes the content of the given filename from the most recent Save to the
 // given writer.
 func (me *Fhd) Extract(filename string, writer io.Writer) error {
+	filename = me.relativePath(filename)
 	sidInfo, err := me.SidForFilename(filename)
 	if err != nil {
 		return err
@@ -243,6 +247,7 @@ func (me *Fhd) Extract(filename string, writer io.Writer) error {
 // (identified by its SID) to the given writer.
 func (me *Fhd) ExtractForSid(sid uint64, filename string,
 	writer io.Writer) error {
+	//filename = me.relativePath(filename) // TODO
 	return errors.New("ExtractForSid unimplemented") // TODO
 }
 
@@ -265,11 +270,13 @@ func (me *Fhd) Compact() error {
 // If this is the only occurrence of the file, the file's state is set to
 // Ignored.
 func (me *Fhd) Delete(sid int, filename string) error {
+	//filename = me.relativePath(filename) // TODO
 	return errors.New("Delete unimplemented") // TODO
 }
 
 // Purges deletes every save of the given file and sets the file's state is
 // set to Ignored.
 func (me *Fhd) Purge(filename string) error {
+	//filename = me.relativePath(filename) // TODO
 	return errors.New("Purge unimplemented") // TODO
 }
