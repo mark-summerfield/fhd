@@ -88,18 +88,6 @@ func (me *Fhd) Monitored() ([]string, error) {
 	return me.haveState(Monitored)
 }
 
-// Unmonitored returns the list of every unmonitored file.
-// See also State.
-func (me *Fhd) Unmonitored() ([]string, error) {
-	return me.haveState(Unmonitored)
-}
-
-// Ignored returns the list of every ignored file.
-// See also State.
-func (me *Fhd) Ignored() ([]string, error) {
-	return me.haveState(Ignored)
-}
-
 // Monitor sets the given files to be monitored _and_ does an initial Save.
 // Returns the new Save ID (SID).
 // See also MonitorWithComment, Unmonitor and Ignore.
@@ -124,11 +112,23 @@ func (me *Fhd) MonitorWithComment(comment string,
 	return me.Save(comment)
 }
 
+// Unmonitored returns the list of every unmonitored file.
+// See also State.
+func (me *Fhd) Unmonitored() ([]string, error) {
+	return me.haveState(Unmonitored)
+}
+
 // Unmonitor sets the given files to be unmonitored. Any Ignored files stay
 // Ignored.
 // See also Monitor and Ignore.
 func (me *Fhd) Unmonitor(filenames ...string) error {
 	return me.setState(Unmonitored, filenames...)
+}
+
+// Ignored returns the list of every ignored file.
+// See also State.
+func (me *Fhd) Ignored() ([]string, error) {
+	return me.haveState(Ignored)
 }
 
 // Ignore sets the given files to be ignored. Any Monitored files become
@@ -222,7 +222,8 @@ func (me *Fhd) SidForFilename(filename string) (SidInfo, error) {
 		// break
 		return nil
 	})
-	return sidInfo, err
+	return sidInfo, errors.Join(err, errors.New("SidForFilename unimplemented")) // TODO
+	//return sidInfo, err
 }
 
 // Returns the all the SIDs for the given filename.
