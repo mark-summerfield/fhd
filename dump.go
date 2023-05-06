@@ -88,14 +88,11 @@ func dumpSaves(tx *bolt.Tx, write WriteStr, writeRaw WriteRaw) error {
 	} else {
 		write("saves:\n")
 		cursor := saves.Cursor()
-		sid, _ := cursor.First()
-		for ; sid != nil; sid, _ = cursor.Next() {
-			u, err := btou(sid)
-			if err != nil {
-				return err
-			}
-			write(fmt.Sprintf("  sid #%d: ", u))
-			if err = dumpSave(saves, sid, write, writeRaw); err != nil {
+		rawSid, _ := cursor.First()
+		for ; rawSid != nil; rawSid, _ = cursor.Next() {
+			sid := UnmarshalSid(rawSid)
+			write(fmt.Sprintf("  sid #%d: ", sid))
+			if err := dumpSave(saves, rawSid, write, writeRaw); err != nil {
 				return err
 			}
 		}
@@ -103,9 +100,9 @@ func dumpSaves(tx *bolt.Tx, write WriteStr, writeRaw WriteRaw) error {
 	return nil
 }
 
-func dumpSave(saves *bolt.Bucket, sid []byte, write WriteStr,
+func dumpSave(saves *bolt.Bucket, rawSid []byte, write WriteStr,
 	writeRaw WriteRaw) error {
-	save := saves.Bucket(sid)
+	save := saves.Bucket(rawSid)
 	if save == nil {
 		write("error: missing save\n")
 	} else {

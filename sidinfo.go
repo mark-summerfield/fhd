@@ -5,13 +5,15 @@ package fhd
 
 import "time"
 
+type SID uint64
+
 type SidInfo struct {
-	sid     uint64
+	sid     SID
 	when    time.Time
 	comment string
 }
 
-func newSidInfo(sid uint64, when time.Time, comment string) SidInfo {
+func newSidInfo(sid SID, when time.Time, comment string) SidInfo {
 	return SidInfo{sid: sid, when: when, comment: comment}
 }
 
@@ -23,7 +25,11 @@ func (me *SidInfo) IsValid() bool {
 	return me.sid > 0
 }
 
-func (me *SidInfo) Sid() uint64 {
+func (me *SidInfo) RawSid() []byte {
+	return MarshalSid(me.sid)
+}
+
+func (me *SidInfo) Sid() SID {
 	return me.sid
 }
 

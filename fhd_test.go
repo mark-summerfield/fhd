@@ -111,25 +111,27 @@ func TestSidSequence(t *testing.T) {
 				t.Error(err)
 				return err
 			}
-			_, err := saves.CreateBucket(utob(sidInfo.Sid()))
+			_, err := saves.CreateBucket(sidInfo.RawSid())
 			if err != nil {
 				t.Error(err)
 				return err
 			}
-			sid, _ := saves.NextSequence()
+			u, _ := saves.NextSequence()
+			sid := SID(u)
 			if sid != 2 {
 				t.Errorf("expected sid of 2: %d", sid)
 			}
-			_, err = saves.CreateBucket(utob(sidInfo.Sid() + 1))
+			_, err = saves.CreateBucket(MarshalSid(sidInfo.Sid() + 1))
 			if err != nil {
 				t.Error(err)
 				return err
 			}
-			sid, _ = saves.NextSequence()
+			u, _ = saves.NextSequence()
+			sid = SID(u)
 			if sid != 3 {
 				t.Errorf("expected sid of 3: %d", sid)
 			}
-			_, err = saves.CreateBucket(utob(sidInfo.Sid() + 2))
+			_, err = saves.CreateBucket(MarshalSid(sidInfo.Sid() + 2))
 			if err != nil {
 				t.Error(err)
 				return err
@@ -145,42 +147,36 @@ func TestSidSequence(t *testing.T) {
 				t.Error("expected savesBucket, got nil")
 			}
 			cursor := saves.Cursor()
-			sid, _ := cursor.Last()
-			if sid == nil {
+			rawSid, _ := cursor.Last()
+			if rawSid == nil {
 				t.Error("expected savesBucket sid 3, got nil")
 			}
-			u, err := btou(sid)
-			if err != nil {
-				t.Errorf("unexpected error: %s", err)
-			}
-			if u != 3 {
+			sid := UnmarshalSid(rawSid)
+			if sid != 3 {
 				t.Errorf("expected savesBucket expected 3 got %v", sid)
 			}
-			sid, _ = cursor.Prev()
-			if sid == nil {
+			rawSid, _ = cursor.Prev()
+			if rawSid == nil {
 				t.Error("expected savesBucket sid 2, got nil")
 			}
-			u, err = btou(sid)
+			sid = UnmarshalSid(rawSid)
 			if err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
-			if u != 2 {
+			if sid != 2 {
 				t.Errorf("expected savesBucket expected 2 got %v", sid)
 			}
-			sid, _ = cursor.Prev()
-			if sid == nil {
+			rawSid, _ = cursor.Prev()
+			if rawSid == nil {
 				t.Error("expected savesBucket sid 1, got nil")
 			}
-			u, err = btou(sid)
-			if err != nil {
-				t.Errorf("unexpected error: %s", err)
-			}
-			if u != 1 {
+			sid = UnmarshalSid(rawSid)
+			if sid != 1 {
 				t.Errorf("expected savesBucket expected 1 got %v", sid)
 			}
-			sid, _ = cursor.Prev()
-			if sid != nil {
-				t.Errorf("expected savesBucket nil got %v", sid)
+			rawSid, _ = cursor.Prev()
+			if rawSid != nil {
+				t.Errorf("expected savesBucket nil got %v", rawSid)
 			}
 			return nil
 		})

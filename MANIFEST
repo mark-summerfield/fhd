@@ -36,7 +36,10 @@ st.sh
 
     "states" bucket
 	key filename string
-	value state enum # monitored unmonitored ignored
+	value StateInfo {
+	    state enum # monitored unmonitored ignored
+	    sid int # the most recent sid this file was saved into
+	}
 	# if renamed only keep newname here
 
     "renamed" bucket # ???

@@ -113,13 +113,14 @@ func (me *Fhd) haveState(state StateKind) ([]string, error) {
 }
 
 func (me *Fhd) newSid(comment string) (SidInfo, error) {
-	var sid uint64
+	var sid SID
 	err := me.db.Update(func(tx *bolt.Tx) error {
 		saves := tx.Bucket(savesBucket)
 		if saves == nil {
 			return fmt.Errorf("failed to find %q", savesBucket)
 		}
-		sid, _ = saves.NextSequence()
+		u, _ := saves.NextSequence()
+		sid = SID(u)
 		return nil
 	})
 	if err != nil {
@@ -128,7 +129,7 @@ func (me *Fhd) newSid(comment string) (SidInfo, error) {
 	return newSidInfo(sid, time.Now(), comment), nil
 }
 
-func (me *Fhd) maybeSaveOne(saves *bolt.Bucket, sid uint64,
+func (me *Fhd) maybeSaveOne(saves *bolt.Bucket, sid SID,
 	filename string) error {
 	var sha SHA256
 	raw, rawFlate, rawLzw, err := getRaws(filename, &sha)
@@ -148,11 +149,11 @@ func (me *Fhd) maybeSaveOne(saves *bolt.Bucket, sid uint64,
 	case Lzw:
 		entry.Blob = rawLzw
 	}
-	return saves.Put(utob(sid), entry.Marshal())
+	return saves.Put(MarshalSid(sid), entry.Marshal())
 }
 
-func (me *Fhd) sameAsPrev(saves *bolt.Bucket, newSid uint64,
-	filename string, newSha *SHA256) bool {
+func (me *Fhd) sameAsPrev(saves *bolt.Bucket, newSid SID, filename string,
+	newSha *SHA256) bool {
 	entry := me.findLatestEntry(saves, filename)
 	if entry == nil {
 		return false // There is no previous entry for this filename.

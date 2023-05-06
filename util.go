@@ -15,20 +15,20 @@ import (
 	"time"
 )
 
-func utob(u uint64) []byte {
+func MarshalSid(sid SID) []byte {
 	raw := make([]byte, 8)
-	binary.BigEndian.PutUint64(raw, u)
+	binary.BigEndian.PutUint64(raw, uint64(sid))
 	return raw
 }
 
-func btou(raw []byte) (uint64, error) {
-	var u uint64
+func UnmarshalSid(raw []byte) SID {
+	var sid SID
 	buf := bytes.NewReader(raw)
-	err := binary.Read(buf, binary.BigEndian, &u)
+	err := binary.Read(buf, binary.BigEndian, &sid)
 	if err != nil {
-		return 0, err
+		return 0
 	}
-	return u, nil
+	return sid
 }
 
 // rawForTime is: time.Time.MarshalBinary()

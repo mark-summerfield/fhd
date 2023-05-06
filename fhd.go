@@ -59,7 +59,8 @@ func (me *Fhd) FileFormat() (int, error) {
 	return int(fileformat), nil
 }
 
-// States returns the state of every known file.
+// States returns the state of every known file and the SID of the last save
+// it was saved into.
 // See also Monitored, Unmonitored, and Ignored.
 func (me *Fhd) States() ([]*StateData, error) {
 	stateData := make([]*StateData, 0)
@@ -175,8 +176,8 @@ func (me *Fhd) Sid() (SidInfo, error) {
 			return fmt.Errorf("failed to find %q", savesBucket)
 		}
 		cursor := saves.Cursor()
-		sid, _ := cursor.Last()
-		save := saves.Bucket(sid)
+		rawSid, _ := cursor.Last()
+		save := saves.Bucket(rawSid)
 		if save != nil {
 			rawWhen := save.Get(savesWhen)
 			when, err := timeForRaw(rawWhen)
@@ -188,11 +189,7 @@ func (me *Fhd) Sid() (SidInfo, error) {
 			if rawComment != nil {
 				comment = string(rawComment)
 			}
-			u, err := btou(sid)
-			if err != nil {
-				return err
-			}
-			sidInfo = newSidInfo(u, when, comment)
+			sidInfo = newSidInfo(UnmarshalSid(rawSid), when, comment)
 		}
 		return nil
 	})
@@ -246,7 +243,7 @@ func (me *Fhd) Extract(filename string, writer io.Writer) error {
 
 // Writes the content of the given filename from the specified Save
 // (identified by its SID) to the given writer.
-func (me *Fhd) ExtractForSid(sid uint64, filename string,
+func (me *Fhd) ExtractForSid(sid SID, filename string,
 	writer io.Writer) error {
 	//filename = me.relativePath(filename) // TODO
 	return errors.New("ExtractForSid unimplemented") // TODO

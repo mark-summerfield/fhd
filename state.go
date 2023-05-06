@@ -31,17 +31,36 @@ func (me *StateKind) IsIgnored() bool {
 	return len(*me) == 1 && (*me)[0] == 'I'
 }
 
+type StateInfo struct {
+	State StateKind
+	Sid   SID // Most recent SID the corresponding file was saved into
+}
+
+func newStateInfo(state StateKind, sid SID) StateInfo {
+	return StateInfo{State: state, Sid: sid}
+}
+
+func (me StateInfo) Marshal() []byte {
+	raw := make([]byte, 0, 9)
+	raw = append(raw, MarshalSid(me.Sid)...)
+	return append(raw, me.State...)
+}
+
+func UnmarshalStateInfo(raw []byte) StateInfo {
+	return newStateInfo(StateKind(raw[8:]), UnmarshalSid(raw[:8]))
+}
+
 type StateData struct {
 	filename string
-	state    StateKind
+	StateInfo
 }
 
-func newState(filename string, state StateKind) *StateData {
-	return &StateData{filename: filename, state: state}
+func newState(filename string, stateInfo StateInfo) *StateData {
+	return &StateData{filename: filename, StateInfo: stateInfo}
 }
 
-func newStateFromRaw(filename []byte, state []byte) *StateData {
-	return newState(string(filename), StateKind(state))
+func newStateFromRaw(rawFilename []byte, rawStateInfo []byte) *StateData {
+	return newState(string(rawFilename), UnmarshalStateInfo(rawStateInfo))
 }
 
 func (me *StateData) Filename() string {
@@ -49,13 +68,18 @@ func (me *StateData) Filename() string {
 }
 
 func (me *StateData) IsMonitored() bool {
-	return me.state.IsMonitored()
+	return me.State.IsMonitored()
 }
 
 func (me *StateData) IsUnmonitored() bool {
-	return me.state.IsUnmonitored()
+	return me.State.IsUnmonitored()
 }
 
 func (me *StateData) IsIgnored() bool {
-	return me.state.IsIgnored()
+	return me.State.IsIgnored()
+}
+
+type FilenameSid struct {
+	Filename string
+	Sid      SID
 }
