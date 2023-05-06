@@ -13,8 +13,10 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
-type WriteStr func(string)
-type WriteRaw func([]byte)
+type (
+	WriteStr func(string)
+	WriteRaw func([]byte)
+)
 
 // Dump writes data from the underlying database to the writer purely for
 // debugging and testing.
@@ -108,7 +110,7 @@ func dumpSave(saves *bolt.Bucket, rawSid []byte, write WriteStr,
 		write("error: missing save\n")
 	} else {
 		rawWhen := save.Get(savesWhen)
-		when, err := timeForRaw(rawWhen)
+		when, err := UnmarshalTime(rawWhen)
 		if err != nil {
 			return err
 		}
@@ -120,23 +122,23 @@ func dumpSave(saves *bolt.Bucket, rawSid []byte, write WriteStr,
 		}
 		write("\n")
 		filesCursor := save.Cursor()
-		filename, data := filesCursor.First()
+		filename, rawEntry := filesCursor.First()
 		for ; filename != nil; filename,
-			data = filesCursor.Next() {
+			rawEntry = filesCursor.Next() {
 			if slices.Equal(filename, savesWhen) ||
 				slices.Equal(filename, savesComment) {
 				continue // these aren't filenames
 			}
-			dumpEntry(filename, data, write, writeRaw)
+			dumpEntry(filename, rawEntry, write, writeRaw)
 		}
 	}
 	return nil
 }
 
-func dumpEntry(filename []byte, data []byte, write WriteStr,
+func dumpEntry(filename []byte, rawEntry []byte, write WriteStr,
 	writeRaw WriteRaw) {
 	write("    ")
 	writeRaw(filename)
-	entry := UnmarshalEntry(data)
+	entry := UnmarshalEntry(rawEntry)
 	write(" " + entry.String() + "\n")
 }

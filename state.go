@@ -57,20 +57,16 @@ func UnmarshalStateInfo(raw []byte) StateInfo {
 }
 
 type StateData struct {
-	filename string
+	Filename string
 	StateInfo
 }
 
 func newState(filename string, stateInfo StateInfo) *StateData {
-	return &StateData{filename: filename, StateInfo: stateInfo}
+	return &StateData{Filename: filename, StateInfo: stateInfo}
 }
 
 func newStateFromRaw(rawFilename []byte, rawStateInfo []byte) *StateData {
 	return newState(string(rawFilename), UnmarshalStateInfo(rawStateInfo))
-}
-
-func (me *StateData) Filename() string {
-	return me.filename
 }
 
 func (me *StateData) IsMonitored() bool {
@@ -83,13 +79,4 @@ func (me *StateData) IsUnmonitored() bool {
 
 func (me *StateData) IsIgnored() bool {
 	return me.State.IsIgnored()
-}
-
-type FilenameSid struct {
-	Filename string
-	Sid      SID
-}
-
-func newFilenameSid(filename string, sid SID) *FilenameSid {
-	return &FilenameSid{Filename: filename, Sid: sid}
 }

@@ -1,7 +1,5 @@
 # TODO implement Sids()
-# TODO implement SidForFilename()
 # TODO implement SidsForFilename()
-# TODO implement Extract()
 # TODO implement ExtractForSid()
 # TODO implement Rename()
 # TODO implement Compact()
@@ -16,7 +14,7 @@ dump.go
 entry.go
 state.go
 flag.go
-sidinfo.go
+saveinfo.go
 util.go
 consts.go
 

@@ -85,19 +85,19 @@ func (me *Fhd) States() ([]*StateData, error) {
 }
 
 // Monitored returns the list of every monitored file.
-// See also State.
-func (me *Fhd) Monitored() ([]*FilenameSid, error) {
+// See also States.
+func (me *Fhd) Monitored() ([]*StateData, error) {
 	return me.haveState(Monitored)
 }
 
 // Monitor sets the given files to be monitored _and_ does an initial Save.
 // Returns the new Save ID (SID).
 // See also MonitorWithComment, Unmonitor and Ignore.
-func (me *Fhd) Monitor(filenames ...string) (SidInfo,
+func (me *Fhd) Monitor(filenames ...string) (SaveInfo,
 	error) {
 	err := me.setState(Monitored, filenames...)
 	if err != nil {
-		return newInvalidSidInfo(), err
+		return newInvalidSaveInfo(), err
 	}
 	return me.Save("")
 }
@@ -106,17 +106,17 @@ func (me *Fhd) Monitor(filenames ...string) (SidInfo,
 // initial Save. Returns the new Save ID (SID).
 // See also Monitor, Unmonitor and Ignore.
 func (me *Fhd) MonitorWithComment(comment string,
-	filenames ...string) (SidInfo, error) {
+	filenames ...string) (SaveInfo, error) {
 	err := me.setState(Monitored, filenames...)
 	if err != nil {
-		return newInvalidSidInfo(), err
+		return newInvalidSaveInfo(), err
 	}
 	return me.Save(comment)
 }
 
 // Unmonitored returns the list of every unmonitored file.
-// See also State.
-func (me *Fhd) Unmonitored() ([]*FilenameSid, error) {
+// See also States.
+func (me *Fhd) Unmonitored() ([]*StateData, error) {
 	return me.haveState(Unmonitored)
 }
 
@@ -128,8 +128,8 @@ func (me *Fhd) Unmonitor(filenames ...string) error {
 }
 
 // Ignored returns the list of every ignored file.
-// See also State.
-func (me *Fhd) Ignored() ([]*FilenameSid, error) {
+// See also States.
+func (me *Fhd) Ignored() ([]*StateData, error) {
 	return me.haveState(Ignored)
 }
 
@@ -140,29 +140,29 @@ func (me *Fhd) Ignore(filenames ...string) error {
 	return me.setState(Ignored, filenames...)
 }
 
-// Save saves a snapshot of every monitored file that's changed, and returns
-// the corresponding SidInfo with the new save ID (SID).
-func (me *Fhd) Save(comment string) (SidInfo, error) {
+// Save saves a snapshot of every monitored file that's changed and returns
+// the corresponding SaveInfo with the new save ID (SID).
+func (me *Fhd) Save(comment string) (SaveInfo, error) {
 	monitored, err := me.Monitored()
 	if err != nil {
-		return newInvalidSidInfo(), err
+		return newInvalidSaveInfo(), err
 	}
-	sidInfo, err := me.newSid(comment)
+	saveInfo, err := me.newSid(comment)
 	if err != nil {
-		return newInvalidSidInfo(), err
+		return newInvalidSaveInfo(), err
 	}
-	sid := sidInfo.Sid()
+	sid := saveInfo.Sid
 	err = me.db.Update(func(tx *bolt.Tx) error {
 		var err error
-		for _, filenameSid := range monitored {
-			if ierr := me.maybeSaveOne(tx, sid, filenameSid.Filename,
-				filenameSid.Sid); ierr != nil {
+		for _, stateData := range monitored {
+			if ierr := me.maybeSaveOne(tx, sid, stateData.Filename,
+				stateData.Sid); ierr != nil {
 				err = errors.Join(err, ierr)
 			}
 		}
 		return err
 	})
-	return sidInfo, err
+	return saveInfo, err
 }
 
 // Returns the most recent Save ID (SID) or 0 on error.
@@ -180,10 +180,10 @@ func (me *Fhd) Sid() SID {
 	return sid
 }
 
-// SidInfo returns the SidInfo for the given SID or an invalid SidInfo on
+// SaveInfo returns the SaveInfo for the given SID or an invalid SaveInfo on
 // error.
-func (me *Fhd) SidInfo(sid SID) SidInfo {
-	var sidInfo SidInfo
+func (me *Fhd) SaveInfo(sid SID) SaveInfo {
+	var saveInfo SaveInfo
 	err := me.db.View(func(tx *bolt.Tx) error {
 		saves := tx.Bucket(savesBucket)
 		if saves == nil {
@@ -192,7 +192,7 @@ func (me *Fhd) SidInfo(sid SID) SidInfo {
 		save := saves.Bucket(MarshalSid(sid))
 		if save != nil {
 			rawWhen := save.Get(savesWhen)
-			when, err := timeForRaw(rawWhen)
+			when, err := UnmarshalTime(rawWhen)
 			if err != nil {
 				return err
 			}
@@ -201,14 +201,14 @@ func (me *Fhd) SidInfo(sid SID) SidInfo {
 			if rawComment != nil {
 				comment = string(rawComment)
 			}
-			sidInfo = newSidInfo(sid, when, comment)
+			saveInfo = newSaveInfo(sid, when, comment)
 		}
 		return nil
 	})
 	if err != nil {
-		return newInvalidSidInfo()
+		return newInvalidSaveInfo()
 	}
-	return sidInfo
+	return saveInfo
 }
 
 // Returns all the Save IDs (SIDs).

@@ -97,12 +97,12 @@ func TestSidSequence(t *testing.T) {
 		if err != nil {
 			t.Errorf("unexpected error: %s", err)
 		}
-		if sidInfo.Sid() != 1 {
-			t.Errorf("unexpected sid, expected 1, got %d", sidInfo.Sid())
+		if sidInfo.Sid != 1 {
+			t.Errorf("unexpected sid, expected 1, got %d", sidInfo.Sid)
 		}
-		if sidInfo.Comment() != expected {
+		if sidInfo.Comment != expected {
 			t.Errorf("unexpected sid, expected %s, got %s", expected,
-				sidInfo.Comment())
+				sidInfo.Comment)
 		}
 		err = fhd.db.Update(func(tx *bolt.Tx) error {
 			saves := tx.Bucket(savesBucket)
@@ -121,7 +121,7 @@ func TestSidSequence(t *testing.T) {
 			if sid != 2 {
 				t.Errorf("expected sid of 2: %d", sid)
 			}
-			_, err = saves.CreateBucket(MarshalSid(sidInfo.Sid() + 1))
+			_, err = saves.CreateBucket(MarshalSid(sidInfo.Sid + 1))
 			if err != nil {
 				t.Error(err)
 				return err
@@ -131,7 +131,7 @@ func TestSidSequence(t *testing.T) {
 			if sid != 3 {
 				t.Errorf("expected sid of 3: %d", sid)
 			}
-			_, err = saves.CreateBucket(MarshalSid(sidInfo.Sid() + 2))
+			_, err = saves.CreateBucket(MarshalSid(sidInfo.Sid + 2))
 			if err != nil {
 				t.Error(err)
 				return err

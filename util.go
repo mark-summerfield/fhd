@@ -31,8 +31,8 @@ func UnmarshalSid(raw []byte) SID {
 	return sid
 }
 
-// rawForTime is: time.Time.MarshalBinary()
-func timeForRaw(raw []byte) (time.Time, error) {
+// Marshal for Time is: time.Time.MarshalBinary()
+func UnmarshalTime(raw []byte) (time.Time, error) {
 	var t time.Time
 	err := t.UnmarshalBinary(raw)
 	return t, err

@@ -63,6 +63,7 @@ func newDb(filename string) (*bolt.DB, error) {
 // If state is Ignored: if a file's current state is Monitored, its state
 // will be set to Unmonitored.
 // Can only go from Monitored to Unmonitored, not Ignored.
+// Preserves the SID if the filename → StateInfo already exists.
 func (me *Fhd) setState(state StateKind, filenames ...string) error {
 	return me.db.Update(func(tx *bolt.Tx) error {
 		states := tx.Bucket(statesBucket)
@@ -73,16 +74,21 @@ func (me *Fhd) setState(state StateKind, filenames ...string) error {
 		for _, filename := range filenames {
 			key := []byte(me.relativePath(filename))
 			newState := state
-			oldState := StateKind(states.Get(key))
-			if oldState != nil {
+			var sid SID
+			rawOldStateInfo := states.Get(key)
+			if rawOldStateInfo != nil {
+				oldStateInfo := UnmarshalStateInfo(rawOldStateInfo)
+				oldState := oldStateInfo.State
 				if newState.Equal(Unmonitored) && oldState.Equal(Ignored) {
 					continue // Ignored is implicitly Unmonitored
 				} else if newState.Equal(Ignored) &&
 					oldState.Equal(Monitored) {
 					newState = Unmonitored
 				}
+				sid = oldStateInfo.Sid
 			}
-			if ierr := states.Put(key, newState); ierr != nil {
+			stateInfo := newStateInfo(newState, sid)
+			if ierr := states.Put(key, stateInfo.Marshal()); ierr != nil {
 				err = errors.Join(err, ierr)
 			}
 		}
@@ -90,8 +96,8 @@ func (me *Fhd) setState(state StateKind, filenames ...string) error {
 	})
 }
 
-func (me *Fhd) haveState(state StateKind) ([]*FilenameSid, error) {
-	filenameSids := make([]*FilenameSid, 0)
+func (me *Fhd) haveState(state StateKind) ([]*StateData, error) {
+	stateData := make([]*StateData, 0)
 	err := me.db.View(func(tx *bolt.Tx) error {
 		states := tx.Bucket(statesBucket)
 		if states == nil {
@@ -102,9 +108,9 @@ func (me *Fhd) haveState(state StateKind) ([]*FilenameSid, error) {
 		for ; rawFilename != nil; rawFilename,
 			rawStateInfo = cursor.Next() {
 			stateInfo := UnmarshalStateInfo(rawStateInfo)
-			if state.Equal(stateInfo.State) {
-				filenameSids = append(filenameSids, newFilenameSid(
-					string(rawFilename), stateInfo.Sid))
+			if stateInfo.State.Equal(state) {
+				stateData = append(stateData, newState(string(rawFilename),
+					stateInfo))
 			}
 		}
 		return nil
@@ -112,10 +118,10 @@ func (me *Fhd) haveState(state StateKind) ([]*FilenameSid, error) {
 	if err != nil {
 		return nil, err
 	}
-	return filenameSids, nil
+	return stateData, nil
 }
 
-func (me *Fhd) newSid(comment string) (SidInfo, error) {
+func (me *Fhd) newSid(comment string) (SaveInfo, error) {
 	var sid SID
 	err := me.db.Update(func(tx *bolt.Tx) error {
 		saves := tx.Bucket(savesBucket)
@@ -127,9 +133,9 @@ func (me *Fhd) newSid(comment string) (SidInfo, error) {
 		return nil
 	})
 	if err != nil {
-		return newInvalidSidInfo(), err
+		return newInvalidSaveInfo(), err
 	}
-	return newSidInfo(sid, time.Now(), comment), nil
+	return newSaveInfo(sid, time.Now(), comment), nil
 }
 
 // If the new file's SHA256 != prev SHA256 (or there is no prev) we save the
