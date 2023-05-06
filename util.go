@@ -16,8 +16,8 @@ import (
 )
 
 func MarshalSid(sid SID) []byte {
-	raw := make([]byte, 8)
-	binary.BigEndian.PutUint64(raw, uint64(sid))
+	raw := make([]byte, 4)
+	binary.BigEndian.PutUint32(raw, uint32(sid))
 	return raw
 }
 

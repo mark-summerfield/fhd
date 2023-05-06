@@ -5,7 +5,7 @@ package fhd
 
 import "time"
 
-type SID uint64
+type SID uint32 // allows for 4 billion saves
 
 type SidInfo struct {
 	sid     SID
