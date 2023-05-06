@@ -70,10 +70,11 @@ func (me *Fhd) States() ([]*StateData, error) {
 			return fmt.Errorf("failed to find %q", statesBucket)
 		}
 		cursor := states.Cursor()
-		rawFilename, rawState := cursor.First()
-		for ; rawFilename != nil; rawFilename, rawState = cursor.Next() {
+		rawFilename, rawStateInfo := cursor.First()
+		for ; rawFilename != nil; rawFilename,
+			rawStateInfo = cursor.Next() {
 			stateData = append(stateData, newStateFromRaw(rawFilename,
-				rawState))
+				rawStateInfo))
 		}
 		return nil
 	})
@@ -85,7 +86,7 @@ func (me *Fhd) States() ([]*StateData, error) {
 
 // Monitored returns the list of every monitored file.
 // See also State.
-func (me *Fhd) Monitored() ([]string, error) {
+func (me *Fhd) Monitored() ([]*FilenameSid, error) {
 	return me.haveState(Monitored)
 }
 
@@ -115,7 +116,7 @@ func (me *Fhd) MonitorWithComment(comment string,
 
 // Unmonitored returns the list of every unmonitored file.
 // See also State.
-func (me *Fhd) Unmonitored() ([]string, error) {
+func (me *Fhd) Unmonitored() ([]*FilenameSid, error) {
 	return me.haveState(Unmonitored)
 }
 
@@ -128,7 +129,7 @@ func (me *Fhd) Unmonitor(filenames ...string) error {
 
 // Ignored returns the list of every ignored file.
 // See also State.
-func (me *Fhd) Ignored() ([]string, error) {
+func (me *Fhd) Ignored() ([]*FilenameSid, error) {
 	return me.haveState(Ignored)
 }
 
@@ -140,7 +141,7 @@ func (me *Fhd) Ignore(filenames ...string) error {
 }
 
 // Save saves a snapshot of every monitored file that's changed, and returns
-// the corresponding Save ID (SID).
+// the corresponding SidInfo with the new save ID (SID).
 func (me *Fhd) Save(comment string) (SidInfo, error) {
 	monitored, err := me.Monitored()
 	if err != nil {
@@ -152,13 +153,10 @@ func (me *Fhd) Save(comment string) (SidInfo, error) {
 	}
 	sid := sidInfo.Sid()
 	err = me.db.Update(func(tx *bolt.Tx) error {
-		saves := tx.Bucket(savesBucket)
-		if saves == nil {
-			return errors.New("missing saves")
-		}
 		var err error
-		for _, filename := range monitored {
-			if ierr := me.maybeSaveOne(saves, sid, filename); ierr != nil {
+		for _, filenameSid := range monitored {
+			if ierr := me.maybeSaveOne(tx, sid, filenameSid.Filename,
+				filenameSid.Sid); ierr != nil {
 				err = errors.Join(err, ierr)
 			}
 		}
@@ -167,17 +165,31 @@ func (me *Fhd) Save(comment string) (SidInfo, error) {
 	return sidInfo, err
 }
 
-// Returns the most recent Save ID (SID).
-func (me *Fhd) Sid() (SidInfo, error) {
+// Returns the most recent Save ID (SID) or 0 on error.
+func (me *Fhd) Sid() SID {
+	var sid SID
+	_ = me.db.View(func(tx *bolt.Tx) error {
+		saves := tx.Bucket(savesBucket)
+		if saves != nil {
+			cursor := saves.Cursor()
+			rawSid, _ := cursor.Last()
+			sid = UnmarshalSid(rawSid)
+		}
+		return nil
+	})
+	return sid
+}
+
+// SidInfo returns the SidInfo for the given SID or an invalid SidInfo on
+// error.
+func (me *Fhd) SidInfo(sid SID) SidInfo {
 	var sidInfo SidInfo
 	err := me.db.View(func(tx *bolt.Tx) error {
 		saves := tx.Bucket(savesBucket)
 		if saves == nil {
 			return fmt.Errorf("failed to find %q", savesBucket)
 		}
-		cursor := saves.Cursor()
-		rawSid, _ := cursor.Last()
-		save := saves.Bucket(rawSid)
+		save := saves.Bucket(MarshalSid(sid))
 		if save != nil {
 			rawWhen := save.Get(savesWhen)
 			when, err := timeForRaw(rawWhen)
@@ -189,56 +201,57 @@ func (me *Fhd) Sid() (SidInfo, error) {
 			if rawComment != nil {
 				comment = string(rawComment)
 			}
-			sidInfo = newSidInfo(UnmarshalSid(rawSid), when, comment)
+			sidInfo = newSidInfo(sid, when, comment)
 		}
 		return nil
 	})
 	if err != nil {
-		return newInvalidSidInfo(), err
+		return newInvalidSidInfo()
 	}
-	return sidInfo, nil
+	return sidInfo
 }
 
 // Returns all the Save IDs (SIDs).
-func (me *Fhd) Sids() ([]SidInfo, error) {
-	sidInfos := make([]SidInfo, 0)
-	return sidInfos, errors.New("Sids unimplemented") // TODO
+func (me *Fhd) Sids() ([]SID, error) {
+	sids := make([]SID, 0)
+	return sids, errors.New("Sids unimplemented") // TODO
 }
 
 // Returns the most recent SID for the given filename.
-func (me *Fhd) SidForFilename(filename string) (SidInfo, error) {
-	//filename = me.relativePath(filename) // TODO
-	var sidInfo SidInfo
+func (me *Fhd) SidForFilename(filename string) (SID, error) {
+	filename = me.relativePath(filename)
+	var sid SID
 	err := me.db.View(func(tx *bolt.Tx) error {
-		saves := tx.Bucket(savesBucket)
-		if saves == nil {
-			return fmt.Errorf("failed to find %q", savesBucket)
+		states := tx.Bucket(statesBucket)
+		if states == nil {
+			return fmt.Errorf("failed to find %q", statesBucket)
 		}
-		// TODO iterate key (sid) from last back to first using cursor
-		// check value bucket for matching filename & if found set sid &
-		// break
+		rawStateInfo := states.Get([]byte(filename))
+		if rawStateInfo != nil {
+			stateInfo := UnmarshalStateInfo(rawStateInfo)
+			sid = stateInfo.Sid
+		}
 		return nil
 	})
-	return sidInfo, errors.Join(err, errors.New("SidForFilename unimplemented")) // TODO
-	//return sidInfo, err
+	return sid, err
 }
 
 // Returns the all the SIDs for the given filename.
-func (me *Fhd) SidsForFilename(filename string) ([]SidInfo, error) {
+func (me *Fhd) SidsForFilename(filename string) ([]SID, error) {
 	//filename = me.relativePath(filename) // TODO
-	sidInfos := make([]SidInfo, 0)
-	return sidInfos, errors.New("SidsForFilename unimplemented") // TODO
+	sids := make([]SID, 0)
+	return sids, errors.New("SidsForFilename unimplemented") // TODO
 }
 
 // Writes the content of the given filename from the most recent Save to the
 // given writer.
 func (me *Fhd) Extract(filename string, writer io.Writer) error {
 	filename = me.relativePath(filename)
-	sidInfo, err := me.SidForFilename(filename)
+	sid, err := me.SidForFilename(filename)
 	if err != nil {
 		return err
 	}
-	return me.ExtractForSid(sidInfo.Sid(), filename, writer)
+	return me.ExtractForSid(sid, filename, writer)
 }
 
 // Writes the content of the given filename from the specified Save

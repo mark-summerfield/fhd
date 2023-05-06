@@ -3,6 +3,8 @@
 
 package fhd
 
+import "fmt"
+
 var (
 	Monitored   StateKind = []byte{'M'}
 	Unmonitored StateKind = []byte{'U'}
@@ -38,6 +40,10 @@ type StateInfo struct {
 
 func newStateInfo(state StateKind, sid SID) StateInfo {
 	return StateInfo{State: state, Sid: sid}
+}
+
+func (me StateInfo) String() string {
+	return fmt.Sprintf("%s#%d", me.State, me.Sid)
 }
 
 func (me StateInfo) Marshal() []byte {
@@ -82,4 +88,8 @@ func (me *StateData) IsIgnored() bool {
 type FilenameSid struct {
 	Filename string
 	Sid      SID
+}
+
+func newFilenameSid(filename string, sid SID) *FilenameSid {
+	return &FilenameSid{Filename: filename, Sid: sid}
 }

@@ -90,18 +90,21 @@ func (me *Fhd) setState(state StateKind, filenames ...string) error {
 	})
 }
 
-func (me *Fhd) haveState(state StateKind) ([]string, error) {
-	filenames := make([]string, 0)
+func (me *Fhd) haveState(state StateKind) ([]*FilenameSid, error) {
+	filenameSids := make([]*FilenameSid, 0)
 	err := me.db.View(func(tx *bolt.Tx) error {
 		states := tx.Bucket(statesBucket)
 		if states == nil {
 			return fmt.Errorf("failed to find %q", statesBucket)
 		}
 		cursor := states.Cursor()
-		rawFilename, rawState := cursor.First()
-		for ; rawFilename != nil; rawFilename, rawState = cursor.Next() {
-			if state.Equal(StateKind(rawState)) {
-				filenames = append(filenames, string(rawFilename))
+		rawFilename, rawStateInfo := cursor.First()
+		for ; rawFilename != nil; rawFilename,
+			rawStateInfo = cursor.Next() {
+			stateInfo := UnmarshalStateInfo(rawStateInfo)
+			if state.Equal(stateInfo.State) {
+				filenameSids = append(filenameSids, newFilenameSid(
+					string(rawFilename), stateInfo.Sid))
 			}
 		}
 		return nil
@@ -109,7 +112,7 @@ func (me *Fhd) haveState(state StateKind) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return filenames, nil
+	return filenameSids, nil
 }
 
 func (me *Fhd) newSid(comment string) (SidInfo, error) {
@@ -129,14 +132,21 @@ func (me *Fhd) newSid(comment string) (SidInfo, error) {
 	return newSidInfo(sid, time.Now(), comment), nil
 }
 
-func (me *Fhd) maybeSaveOne(saves *bolt.Bucket, sid SID,
-	filename string) error {
+// If the new file's SHA256 != prev SHA256 (or there is no prev) we save the
+// file _and_ update the states with the SID for fast access to the file's
+// most recent save.
+func (me *Fhd) maybeSaveOne(tx *bolt.Tx, sid SID, filename string,
+	prevSid SID) error {
+	saves := tx.Bucket(savesBucket)
+	if saves == nil {
+		return errors.New("missing saves")
+	}
 	var sha SHA256
 	raw, rawFlate, rawLzw, err := getRaws(filename, &sha)
 	if err != nil {
 		return err
 	}
-	if me.sameAsPrev(saves, sid, filename, &sha) {
+	if me.sameAsPrev(saves, sid, filename, prevSid, &sha) {
 		return nil // No need to save if same as before.
 	}
 	flag := flagForSizes(len(raw), len(rawFlate), len(rawLzw))
@@ -149,16 +159,37 @@ func (me *Fhd) maybeSaveOne(saves *bolt.Bucket, sid SID,
 	case Lzw:
 		entry.Blob = rawLzw
 	}
-	return saves.Put(MarshalSid(sid), entry.Marshal())
+	if err = saves.Put(MarshalSid(sid), entry.Marshal()); err == nil {
+		return err
+	}
+	states := tx.Bucket(statesBucket)
+	if states == nil {
+		return errors.New("missing states")
+	}
+	stateInfo := newStateInfo(Monitored, sid)
+	return states.Put([]byte(filename), stateInfo.Marshal())
 }
 
 func (me *Fhd) sameAsPrev(saves *bolt.Bucket, newSid SID, filename string,
-	newSha *SHA256) bool {
-	entry := me.findLatestEntry(saves, filename)
+	prevSid SID, newSha *SHA256) bool {
+	entry := me.getEntry(saves, filename, prevSid)
 	if entry == nil {
 		return false // There is no previous entry for this filename.
 	}
 	return entry.Sha == *newSha
+}
+
+func (me *Fhd) getEntry(saves *bolt.Bucket, filename string,
+	sid SID) *Entry {
+	save := saves.Bucket(MarshalSid(sid))
+	if save == nil {
+		return nil
+	}
+	rawEntry := save.Get([]byte(filename))
+	if rawEntry == nil {
+		return nil
+	}
+	return UnmarshalEntry(rawEntry)
 }
 
 func (me *Fhd) findLatestEntry(saves *bolt.Bucket, filename string) *Entry {

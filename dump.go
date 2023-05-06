@@ -52,12 +52,13 @@ func dumpStates(tx *bolt.Tx, write WriteStr, writeRaw WriteRaw) {
 	} else {
 		write("states:\n")
 		cursor := states.Cursor()
-		filename, state := cursor.First()
-		for ; filename != nil; filename, state = cursor.Next() {
+		rawFilename, rawStateInfo := cursor.First()
+		for ; rawFilename != nil; rawFilename,
+			rawStateInfo = cursor.Next() {
 			write("  ")
-			writeRaw(filename)
-			kind := StateKind(state)
-			write(" " + kind.String())
+			writeRaw(rawFilename)
+			stateInfo := UnmarshalStateInfo(rawStateInfo)
+			write(" " + stateInfo.String())
 		}
 
 	}
