@@ -19,17 +19,9 @@ func newDb(filename string) (*bolt.DB, error) {
 		return nil, err
 	}
 	err = db.Update(func(tx *bolt.Tx) error {
-		config, err := tx.CreateBucketIfNotExists(configBucket)
+		err := makeConfig(tx)
 		if err != nil {
-			return fmt.Errorf("failed to create bucket %q: %s",
-				configBucket, err)
-		}
-		if format := config.Get(configFormat); len(format) != 1 {
-			if err = config.Put(configFormat,
-				[]byte{fileFormat}); err != nil {
-				return fmt.Errorf("failed to initialize %q file format: %s",
-					configBucket, err)
-			}
+			return err
 		}
 		_, err = tx.CreateBucketIfNotExists(statesBucket)
 		if err != nil {
@@ -58,13 +50,34 @@ func newDb(filename string) (*bolt.DB, error) {
 	return db, nil
 }
 
-// setState sets the state of every given file the the given state except as
-// folows.
-// If state is Ignored: if a file's current state is Monitored, its state
-// will be set to Unmonitored.
-// Can only go from Monitored to Unmonitored, not Ignored.
-// Preserves the SID if the filename → StateInfo already exists.
-func (me *Fhd) setState(state StateKind, filenames ...string) error {
+func makeConfig(tx *bolt.Tx) error {
+	config, err := tx.CreateBucketIfNotExists(configBucket)
+	if err != nil {
+		return fmt.Errorf("failed to create bucket %q: %s",
+			configBucket, err)
+	}
+	if format := config.Get(configFormat); len(format) != 1 {
+		if err = config.Put(configFormat,
+			[]byte{fileFormat}); err != nil {
+			return fmt.Errorf("failed to initialize %q file format: %s",
+				configBucket, err)
+		}
+	}
+	ignores, err := config.CreateBucketIfNotExists(configIgnore)
+	if err != nil {
+		return fmt.Errorf("failed to create bucket %q: %s",
+			configIgnore, err)
+	}
+	for _, filename := range defaultIgnores {
+		if ierr := ignores.Put([]byte(filename),
+			emptyValue); ierr != nil {
+			err = errors.Join(err, ierr)
+		}
+	}
+	return err
+}
+
+func (me *Fhd) setMonitored(filenames ...string) error {
 	return me.db.Update(func(tx *bolt.Tx) error {
 		states := tx.Bucket(statesBucket)
 		if states == nil {
@@ -73,21 +86,13 @@ func (me *Fhd) setState(state StateKind, filenames ...string) error {
 		var err error
 		for _, filename := range filenames {
 			key := []byte(me.relativePath(filename))
-			newState := state
 			var sid SID
 			rawOldStateInfo := states.Get(key)
 			if rawOldStateInfo != nil {
 				oldStateInfo := UnmarshalStateInfo(rawOldStateInfo)
-				oldState := oldStateInfo.State
-				if newState.Equal(Unmonitored) && oldState.Equal(Ignored) {
-					continue // Ignored is implicitly Unmonitored
-				} else if newState.Equal(Ignored) &&
-					oldState.Equal(Monitored) {
-					newState = Unmonitored
-				}
 				sid = oldStateInfo.Sid
 			}
-			stateInfo := newStateInfo(newState, sid)
+			stateInfo := newStateInfo(true, sid)
 			if ierr := states.Put(key, stateInfo.Marshal()); ierr != nil {
 				err = errors.Join(err, ierr)
 			}
@@ -96,7 +101,41 @@ func (me *Fhd) setState(state StateKind, filenames ...string) error {
 	})
 }
 
-func (me *Fhd) haveState(state StateKind) ([]*StateData, error) {
+// setUnmonitored sets the state of every given file to Unmonitored if it is
+// being monitored and preserves its SID. For any file that isn't already
+// Monitored, adds it to the config/ignore list.
+func (me *Fhd) setUnmonitored(filenames ...string) error {
+	return me.db.Update(func(tx *bolt.Tx) error {
+		states := tx.Bucket(statesBucket)
+		if states == nil {
+			return fmt.Errorf("failed to find %q", statesBucket)
+		}
+		ignores := me.getIgnores(tx)
+		if ignores == nil {
+			return fmt.Errorf("failed to find %q", configIgnore)
+		}
+		var err error
+		for _, filename := range filenames {
+			key := []byte(me.relativePath(filename))
+			rawOldStateInfo := states.Get(key)
+			if rawOldStateInfo == nil { // Not Monitored so add to ignores
+				if ierr := ignores.Put(key, emptyValue); ierr != nil {
+					err = errors.Join(err, ierr)
+				}
+			} else {
+				oldStateInfo := UnmarshalStateInfo(rawOldStateInfo)
+				stateInfo := newStateInfo(false, oldStateInfo.Sid)
+				if ierr := states.Put(key,
+					stateInfo.Marshal()); ierr != nil {
+					err = errors.Join(err, ierr)
+				}
+			}
+		}
+		return err
+	})
+}
+
+func (me *Fhd) areMonitored(monitored bool) ([]*StateData, error) {
 	stateData := make([]*StateData, 0)
 	err := me.db.View(func(tx *bolt.Tx) error {
 		states := tx.Bucket(statesBucket)
@@ -108,7 +147,7 @@ func (me *Fhd) haveState(state StateKind) ([]*StateData, error) {
 		for ; rawFilename != nil; rawFilename,
 			rawStateInfo = cursor.Next() {
 			stateInfo := UnmarshalStateInfo(rawStateInfo)
-			if stateInfo.State.Equal(state) {
+			if stateInfo.Monitored == monitored {
 				stateData = append(stateData, newState(string(rawFilename),
 					stateInfo))
 			}
@@ -119,6 +158,46 @@ func (me *Fhd) haveState(state StateKind) ([]*StateData, error) {
 		return nil, err
 	}
 	return stateData, nil
+}
+
+func (me *Fhd) setIgnored(filenames ...string) error {
+	err := me.db.Update(func(tx *bolt.Tx) error {
+		ignores := me.getIgnores(tx)
+		var err error
+		for _, filename := range filenames {
+			if ierr := ignores.Put([]byte(filename),
+				emptyValue); ierr != nil {
+				err = errors.Join(err, ierr)
+			}
+		}
+		return err
+	})
+	return err
+}
+
+func (me *Fhd) areIgnored() ([]string, error) {
+	ignored := make([]string, 0)
+	err := me.db.View(func(tx *bolt.Tx) error {
+		ignores := me.getIgnores(tx)
+		if ignores == nil {
+			return fmt.Errorf("failed to find %q", configIgnore)
+		}
+		cursor := ignores.Cursor()
+		rawFilename, _ := cursor.First()
+		for ; rawFilename != nil; rawFilename, _ = cursor.Next() {
+			ignored = append(ignored, string(rawFilename))
+		}
+		return nil
+	})
+	return ignored, err
+}
+
+func (me *Fhd) getIgnores(tx *bolt.Tx) *bolt.Bucket {
+	config := tx.Bucket(configBucket)
+	if config == nil {
+		return nil
+	}
+	return config.Bucket(configIgnore)
 }
 
 func (me *Fhd) newSid(comment string) (SaveInfo, error) {
@@ -165,14 +244,14 @@ func (me *Fhd) maybeSaveOne(tx *bolt.Tx, sid SID, filename string,
 	case Lzw:
 		entry.Blob = rawLzw
 	}
-	if err = saves.Put(MarshalSid(sid), entry.Marshal()); err == nil {
+	if err = saves.Put(sid.Marshal(), entry.Marshal()); err == nil {
 		return err
 	}
 	states := tx.Bucket(statesBucket)
 	if states == nil {
 		return errors.New("missing states")
 	}
-	stateInfo := newStateInfo(Monitored, sid)
+	stateInfo := newStateInfo(true, sid)
 	return states.Put([]byte(filename), stateInfo.Marshal())
 }
 
@@ -187,7 +266,7 @@ func (me *Fhd) sameAsPrev(saves *bolt.Bucket, newSid SID, filename string,
 
 func (me *Fhd) getEntry(saves *bolt.Bucket, filename string,
 	sid SID) *Entry {
-	save := saves.Bucket(MarshalSid(sid))
+	save := saves.Bucket(sid.Marshal())
 	if save == nil {
 		return nil
 	}

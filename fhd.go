@@ -59,8 +59,8 @@ func (me *Fhd) FileFormat() (int, error) {
 	return int(fileformat), nil
 }
 
-// States returns the state of every known file and the SID of the last save
-// it was saved into.
+// States returns the monitoring state of every known file and the SID of
+// the last save it was saved into.
 // See also Monitored, Unmonitored, and Ignored.
 func (me *Fhd) States() ([]*StateData, error) {
 	stateData := make([]*StateData, 0)
@@ -78,28 +78,20 @@ func (me *Fhd) States() ([]*StateData, error) {
 		}
 		return nil
 	})
-	if err != nil {
-		return nil, err
-	}
-	return stateData, nil
+	return stateData, err
 }
 
 // Monitored returns the list of every monitored file.
 // See also States.
 func (me *Fhd) Monitored() ([]*StateData, error) {
-	return me.haveState(Monitored)
+	return me.areMonitored(true)
 }
 
 // Monitor sets the given files to be monitored _and_ does an initial Save.
 // Returns the new Save ID (SID).
 // See also MonitorWithComment, Unmonitor and Ignore.
-func (me *Fhd) Monitor(filenames ...string) (SaveInfo,
-	error) {
-	err := me.setState(Monitored, filenames...)
-	if err != nil {
-		return newInvalidSaveInfo(), err
-	}
-	return me.Save("")
+func (me *Fhd) Monitor(filenames ...string) (SaveInfo, error) {
+	return me.MonitorWithComment("", filenames...)
 }
 
 // MonitorWithComment sets the given files to be monitored _and_ does an
@@ -107,7 +99,7 @@ func (me *Fhd) Monitor(filenames ...string) (SaveInfo,
 // See also Monitor, Unmonitor and Ignore.
 func (me *Fhd) MonitorWithComment(comment string,
 	filenames ...string) (SaveInfo, error) {
-	err := me.setState(Monitored, filenames...)
+	err := me.setMonitored(filenames...)
 	if err != nil {
 		return newInvalidSaveInfo(), err
 	}
@@ -117,27 +109,31 @@ func (me *Fhd) MonitorWithComment(comment string,
 // Unmonitored returns the list of every unmonitored file.
 // See also States.
 func (me *Fhd) Unmonitored() ([]*StateData, error) {
-	return me.haveState(Unmonitored)
+	return me.areMonitored(false)
 }
 
 // Unmonitor sets the given files to be unmonitored. Any Ignored files stay
-// Ignored.
+// Ignored; any files not Monitored are added to the Ignored list.
 // See also Monitor and Ignore.
 func (me *Fhd) Unmonitor(filenames ...string) error {
-	return me.setState(Unmonitored, filenames...)
+	return me.setUnmonitored(filenames...)
 }
 
-// Ignored returns the list of every ignored file.
+// Ignored returns the list of every ignored filename or glob.
 // See also States.
-func (me *Fhd) Ignored() ([]*StateData, error) {
-	return me.haveState(Ignored)
+func (me *Fhd) Ignored() ([]string, error) {
+	return me.areIgnored()
 }
 
-// Ignore sets the given files to be ignored. Any Monitored files become
-// Unmonitored rather than Ignored.
+// Ignore sets the given files or globs to be ignored.
 // See also Monitor and Unmonitor.
 func (me *Fhd) Ignore(filenames ...string) error {
-	return me.setState(Ignored, filenames...)
+	return me.setIgnored(filenames...)
+}
+
+func (me *Fhd) Unignore(filenames ...string) error {
+	// Just delete from ignores (but not "*.fhd"!)
+	return errors.New("Unignore unimplemented") // TODO
 }
 
 // Save saves a snapshot of every monitored file that's changed and returns
@@ -189,7 +185,7 @@ func (me *Fhd) SaveInfo(sid SID) SaveInfo {
 		if saves == nil {
 			return fmt.Errorf("failed to find %q", savesBucket)
 		}
-		save := saves.Bucket(MarshalSid(sid))
+		save := saves.Bucket(sid.Marshal())
 		if save != nil {
 			rawWhen := save.Get(savesWhen)
 			when, err := UnmarshalTime(rawWhen)

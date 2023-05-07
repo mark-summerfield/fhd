@@ -8,35 +8,10 @@ import (
 	"compress/flate"
 	"compress/lzw"
 	"crypto/sha256"
-	"encoding/binary"
 	"errors"
 	"os"
 	"sync"
-	"time"
 )
-
-func MarshalSid(sid SID) []byte {
-	raw := make([]byte, 4)
-	binary.BigEndian.PutUint32(raw, uint32(sid))
-	return raw
-}
-
-func UnmarshalSid(raw []byte) SID {
-	var sid SID
-	buf := bytes.NewReader(raw)
-	err := binary.Read(buf, binary.BigEndian, &sid)
-	if err != nil {
-		return 0
-	}
-	return sid
-}
-
-// Marshal for Time is: time.Time.MarshalBinary()
-func UnmarshalTime(raw []byte) (time.Time, error) {
-	var t time.Time
-	err := t.UnmarshalBinary(raw)
-	return t, err
-}
 
 func getRaws(filename string, sha *SHA256) ([]byte, []byte, []byte, error) {
 	raw, err := os.ReadFile(filename)

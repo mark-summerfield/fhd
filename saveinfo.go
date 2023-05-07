@@ -5,12 +5,6 @@ package fhd
 
 import "time"
 
-const InvalidSID = 0
-
-type SID uint32 // allows for 4 billion saves
-
-func (me SID) IsValid() bool { return me != InvalidSID }
-
 type SaveInfo struct {
 	Sid     SID
 	When    time.Time
@@ -27,8 +21,4 @@ func newInvalidSaveInfo() SaveInfo {
 
 func (me *SaveInfo) IsValid() bool {
 	return me.Sid.IsValid()
-}
-
-func (me *SaveInfo) RawSid() []byte {
-	return MarshalSid(me.Sid)
 }

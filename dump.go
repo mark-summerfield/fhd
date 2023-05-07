@@ -44,6 +44,20 @@ func dumpConfig(tx *bolt.Tx, write WriteStr, writeRaw WriteRaw) {
 			write(fmt.Sprintf("%d", format[0]))
 		}
 		write("\n")
+		ignore := config.Bucket(configIgnore)
+		if ignore == nil {
+			write("  error (ignore is missing)\n")
+		} else {
+			write("  ignore=")
+			cursor := ignore.Cursor()
+			rawFilename, _ := cursor.First()
+			for ; rawFilename != nil; rawFilename, _ = cursor.Next() {
+				write(" \"")
+				writeRaw(rawFilename)
+				write("\"")
+			}
+			write("\n")
+		}
 	}
 }
 

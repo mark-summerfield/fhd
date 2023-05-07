@@ -15,6 +15,8 @@ entry.go
 state.go
 flag.go
 saveinfo.go
+sid.go
+marshal.go
 util.go
 consts.go
 
@@ -29,13 +31,13 @@ st.sh
 # NOTE
 
     "config" bucket
-	key string # e.g., key='format' value=1
-	value any
+	key string # e.g., key="format" value=1
+	value any  # e.g., key="ignore" value=bucket key=filename value=ε
 
     "states" bucket
 	key filename string
 	value StateInfo {
-	    state enum # monitored unmonitored ignored
+	    monitored bool
 	    sid int # the most recent sid this file was saved into
 	}
 	# if renamed only keep newname here
