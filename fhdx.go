@@ -72,7 +72,7 @@ func makeConfig(tx *bolt.Tx) error {
 	return err
 }
 
-func (me *Fhd) setMonitored(filenames ...string) error {
+func (me *Fhd) monitor(filenames ...string) error {
 	return me.db.Update(func(tx *bolt.Tx) error {
 		states := tx.Bucket(statesBucket)
 		if states == nil {
@@ -96,10 +96,10 @@ func (me *Fhd) setMonitored(filenames ...string) error {
 	})
 }
 
-// setUnmonitored sets the state of every given file to Unmonitored if it is
+// unmonitor sets the state of every given file to Unmonitored if it is
 // being monitored and preserves its SID. For any file that isn't already
 // Monitored, adds it to the config/ignore list.
-func (me *Fhd) setUnmonitored(filenames ...string) error {
+func (me *Fhd) unmonitor(filenames ...string) error {
 	return me.db.Update(func(tx *bolt.Tx) error {
 		states := tx.Bucket(statesBucket)
 		if states == nil {
@@ -130,7 +130,7 @@ func (me *Fhd) setUnmonitored(filenames ...string) error {
 	})
 }
 
-func (me *Fhd) areMonitored(monitored bool) ([]*StateData, error) {
+func (me *Fhd) monitored(monitored bool) ([]*StateData, error) {
 	stateData := make([]*StateData, 0)
 	err := me.db.View(func(tx *bolt.Tx) error {
 		states := tx.Bucket(statesBucket)
@@ -155,7 +155,7 @@ func (me *Fhd) areMonitored(monitored bool) ([]*StateData, error) {
 	return stateData, nil
 }
 
-func (me *Fhd) setIgnored(filenames ...string) error {
+func (me *Fhd) ignore(filenames ...string) error {
 	err := me.db.Update(func(tx *bolt.Tx) error {
 		ignores := me.getIgnores(tx)
 		var err error
@@ -170,7 +170,7 @@ func (me *Fhd) setIgnored(filenames ...string) error {
 	return err
 }
 
-func (me *Fhd) areIgnored() ([]string, error) {
+func (me *Fhd) ignored() ([]string, error) {
 	ignored := make([]string, 0)
 	err := me.db.View(func(tx *bolt.Tx) error {
 		ignores := me.getIgnores(tx)
@@ -195,20 +195,15 @@ func (me *Fhd) getIgnores(tx *bolt.Tx) *bolt.Bucket {
 	return config.Bucket(configIgnore)
 }
 
-func (me *Fhd) newSid(comment string) (SaveInfo, error) {
+func (me *Fhd) newSid(tx *bolt.Tx, comment string) (SaveInfo, error) {
 	var sid SID
-	err := me.db.Update(func(tx *bolt.Tx) error {
-		saves := tx.Bucket(savesBucket)
-		if saves == nil {
-			return fmt.Errorf("failed to find %q", savesBucket)
-		}
-		u, _ := saves.NextSequence()
-		sid = SID(u)
-		return nil
-	})
-	if err != nil {
-		return newInvalidSaveInfo(), err
+	saves := tx.Bucket(savesBucket)
+	if saves == nil {
+		return newInvalidSaveInfo(), fmt.Errorf("failed to find %q",
+			savesBucket)
 	}
+	u, _ := saves.NextSequence()
+	sid = SID(u)
 	return newSaveInfo(sid, time.Now(), comment), nil
 }
 
@@ -250,6 +245,29 @@ func (me *Fhd) maybeSaveOne(tx *bolt.Tx, sid SID, filename string,
 	return states.Put([]byte(filename), stateInfo.Marshal())
 }
 
+func (me *Fhd) saveMetadata(save *bolt.Bucket, saveInfo *SaveInfo) error {
+	if save == nil {
+		return errors.New("failed to save metadata")
+	}
+	n := save.Stats().KeyN // number of keys
+	if n == 0 {            // empty so none changed or saved
+		saveInfo.Sid = InvalidSID // make invalid
+	} else { // nonempty so at least one changed and saved
+		rawWhen, err := saveInfo.When.MarshalBinary()
+		if err != nil {
+			return err
+		}
+		if err = save.Put(savesWhen, rawWhen); err != nil {
+			return err
+		}
+		if err = save.Put(savesComment,
+			[]byte(saveInfo.Comment)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (me *Fhd) sameAsPrev(saves *bolt.Bucket, newSid SID, filename string,
 	prevSid SID, newSha *SHA256) bool {
 	entry := me.getEntry(saves, filename, prevSid)
@@ -270,17 +288,6 @@ func (me *Fhd) getEntry(saves *bolt.Bucket, filename string,
 		return nil
 	}
 	return UnmarshalEntry(rawEntry)
-}
-
-func (me *Fhd) findLatestEntry(saves *bolt.Bucket, filename string) *Entry {
-	cursor := saves.Cursor()
-	rawFilename, rawEntry := cursor.Last()
-	for ; rawFilename != nil; rawFilename, rawEntry = cursor.Prev() {
-		if string(rawFilename) == filename {
-			return UnmarshalEntry(rawEntry)
-		}
-	}
-	return nil
 }
 
 func (me *Fhd) relativePath(filename string) string {

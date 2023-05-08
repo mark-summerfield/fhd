@@ -1,7 +1,4 @@
-# TODO implement Sids()
-# TODO implement SidsForFilename()
-# TODO implement ExtractForSid()
-# TODO implement Rename()
+# TODO implement Rename() once I figure out how!
 # TODO implement Compact()
 # TODO implement Delete()
 # TODO implement Purge()

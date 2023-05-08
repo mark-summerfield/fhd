@@ -4,6 +4,9 @@
 package fhd
 
 import (
+	"bytes"
+	"compress/flate"
+	"compress/lzw"
 	"errors"
 	"fmt"
 	"io"
@@ -30,7 +33,6 @@ func (me *Fhd) Close() error {
 	return me.db.Close()
 }
 
-// See also Dump.
 func (me *Fhd) String() string {
 	format, _ := me.FileFormat()
 	return fmt.Sprintf("<Fhd filename=%q format=%d>", me.db.Path(), format)
@@ -61,7 +63,6 @@ func (me *Fhd) FileFormat() (int, error) {
 
 // States returns the monitoring state of every known file and the SID of
 // the last save it was saved into.
-// See also Monitored, Unmonitored, and Ignored.
 func (me *Fhd) States() ([]*StateData, error) {
 	stateData := make([]*StateData, 0)
 	err := me.db.View(func(tx *bolt.Tx) error {
@@ -82,24 +83,21 @@ func (me *Fhd) States() ([]*StateData, error) {
 }
 
 // Monitored returns the list of every monitored file.
-// See also States.
 func (me *Fhd) Monitored() ([]*StateData, error) {
-	return me.areMonitored(true)
+	return me.monitored(true)
 }
 
-// Monitor sets the given files to be monitored _and_ does an initial Save.
+// Monitor adds the given files to be monitored _and_ does an initial Save.
 // Returns the new Save ID (SID).
-// See also MonitorWithComment, Unmonitor and Ignore.
 func (me *Fhd) Monitor(filenames ...string) (SaveInfo, error) {
 	return me.MonitorWithComment("", filenames...)
 }
 
-// MonitorWithComment sets the given files to be monitored _and_ does an
+// MonitorWithComment adds the given files to be monitored _and_ does an
 // initial Save. Returns the new Save ID (SID).
-// See also Monitor, Unmonitor and Ignore.
 func (me *Fhd) MonitorWithComment(comment string,
 	filenames ...string) (SaveInfo, error) {
-	err := me.setMonitored(filenames...)
+	err := me.monitor(filenames...)
 	if err != nil {
 		return newInvalidSaveInfo(), err
 	}
@@ -107,73 +105,75 @@ func (me *Fhd) MonitorWithComment(comment string,
 }
 
 // Unmonitored returns the list of every unmonitored file.
-// See also States.
+// These are files that have been monitored in the past but have been set to
+// be unmonitored.
 func (me *Fhd) Unmonitored() ([]*StateData, error) {
-	return me.areMonitored(false)
+	return me.monitored(false)
 }
 
-// Unmonitor sets the given files to be unmonitored. Any Ignored files stay
-// Ignored; any files not Monitored are added to the Ignored list.
-// See also Monitor and Ignore.
+// Unmonitor sets the given files to be unmonitored.
+// Any files not already monitored are added to the ignored list.
 func (me *Fhd) Unmonitor(filenames ...string) error {
-	return me.setUnmonitored(filenames...)
+	return me.unmonitor(filenames...)
 }
 
 // Ignored returns the list of every ignored filename or glob.
-// See also States.
 func (me *Fhd) Ignored() ([]string, error) {
-	return me.areIgnored()
+	return me.ignored()
 }
 
-// Ignore sets the given files or globs to be ignored.
-// See also Monitor and Unmonitor.
+// Ignore adds the given files or globs to the ignored list.
 func (me *Fhd) Ignore(filenames ...string) error {
-	return me.setIgnored(filenames...)
+	return me.ignore(filenames...)
 }
 
+// Unignore deletes the given filenames or globs from the ignored list.
+// But it never deletes "*.fhd".
 func (me *Fhd) Unignore(filenames ...string) error {
-	// Just delete from ignores (but not "*.fhd"!)
-	return errors.New("Unignore unimplemented") // TODO
+	return me.db.Update(func(tx *bolt.Tx) error {
+		ignores := me.getIgnores(tx)
+		var err error
+		for _, filename := range filenames {
+			if filename != "*.fhd" {
+				if ierr := ignores.Delete([]byte(filename)); ierr != nil {
+					err = errors.Join(err, ierr)
+				}
+			}
+		}
+		return err
+	})
 }
 
 // Save saves a snapshot of every monitored file that's changed and returns
-// the corresponding SaveInfo with the new save ID (SID).
+// the corresponding SaveInfo with the new save ID (SID). If no files were
+// changed and therefore none were saved, SaveInfo is invalid and err is
+// nil.
 func (me *Fhd) Save(comment string) (SaveInfo, error) {
 	monitored, err := me.Monitored()
 	if err != nil {
 		return newInvalidSaveInfo(), err
 	}
-	saveInfo, err := me.newSid(comment)
-	if err != nil {
-		return newInvalidSaveInfo(), err
-	}
-	sid := saveInfo.Sid
+	var saveInfo SaveInfo
 	err = me.db.Update(func(tx *bolt.Tx) error {
 		var err error
+		saveInfo, err = me.newSid(tx, comment)
+		if err != nil {
+			return err // saveInfo is invalid on err
+		}
+		sid := saveInfo.Sid
 		for _, stateData := range monitored {
 			if ierr := me.maybeSaveOne(tx, sid, stateData.Filename,
 				stateData.Sid); ierr != nil {
 				err = errors.Join(err, ierr)
 			}
 		}
-		return err
+		saves := tx.Bucket(savesBucket)
+		if saves == nil {
+			return errors.New("missing saves")
+		}
+		return me.saveMetadata(saves.Bucket(sid.Marshal()), &saveInfo)
 	})
 	return saveInfo, err
-}
-
-// Returns the most recent Save ID (SID) or 0 on error.
-func (me *Fhd) Sid() SID {
-	var sid SID
-	_ = me.db.View(func(tx *bolt.Tx) error {
-		saves := tx.Bucket(savesBucket)
-		if saves != nil {
-			cursor := saves.Cursor()
-			rawSid, _ := cursor.Last()
-			sid = UnmarshalSid(rawSid)
-		}
-		return nil
-	})
-	return sid
 }
 
 // SaveInfo returns the SaveInfo for the given SID or an invalid SaveInfo on
@@ -207,22 +207,49 @@ func (me *Fhd) SaveInfo(sid SID) SaveInfo {
 	return saveInfo
 }
 
-// Returns all the Save IDs (SIDs).
+// Returns the most recent Save ID (SID) or 0 on error.
+func (me *Fhd) Sid() SID {
+	var sid SID
+	_ = me.db.View(func(tx *bolt.Tx) error {
+		saves := tx.Bucket(savesBucket)
+		if saves != nil {
+			cursor := saves.Cursor()
+			rawSid, _ := cursor.Last()
+			sid = UnmarshalSid(rawSid)
+		}
+		return nil
+	})
+	return sid
+}
+
+// Returns all the Save IDs (SIDs) from most- to least-recent.
 func (me *Fhd) Sids() ([]SID, error) {
 	sids := make([]SID, 0)
-	return sids, errors.New("Sids unimplemented") // TODO
+	err := me.db.View(func(tx *bolt.Tx) error {
+		saves := tx.Bucket(savesBucket)
+		if saves == nil {
+			return fmt.Errorf("failed to find %q", savesBucket)
+		}
+		cursor := saves.Cursor()
+		rawSid, _ := cursor.Last()
+		for ; rawSid != nil; rawSid, _ = cursor.Prev() {
+			sids = append(sids, UnmarshalSid(rawSid))
+		}
+		return nil
+	})
+	return sids, err
 }
 
 // Returns the most recent SID for the given filename.
 func (me *Fhd) SidForFilename(filename string) (SID, error) {
-	filename = me.relativePath(filename)
+	rawFilename := []byte(me.relativePath(filename))
 	var sid SID
 	err := me.db.View(func(tx *bolt.Tx) error {
 		states := tx.Bucket(statesBucket)
 		if states == nil {
 			return fmt.Errorf("failed to find %q", statesBucket)
 		}
-		rawStateInfo := states.Get([]byte(filename))
+		rawStateInfo := states.Get(rawFilename)
 		if rawStateInfo != nil {
 			stateInfo := UnmarshalStateInfo(rawStateInfo)
 			sid = stateInfo.Sid
@@ -232,11 +259,26 @@ func (me *Fhd) SidForFilename(filename string) (SID, error) {
 	return sid, err
 }
 
-// Returns the all the SIDs for the given filename.
+// Returns the all the SIDs for the given filename from most- to
+// least-recent.
 func (me *Fhd) SidsForFilename(filename string) ([]SID, error) {
-	//filename = me.relativePath(filename) // TODO
+	rawFilename := []byte(me.relativePath(filename))
 	sids := make([]SID, 0)
-	return sids, errors.New("SidsForFilename unimplemented") // TODO
+	err := me.db.View(func(tx *bolt.Tx) error {
+		saves := tx.Bucket(savesBucket)
+		if saves == nil {
+			return fmt.Errorf("failed to find %q", savesBucket)
+		}
+		cursor := saves.Cursor()
+		rawSid, _ := cursor.Last()
+		for ; rawSid != nil; rawSid, _ = cursor.Prev() {
+			if save := saves.Bucket(rawFilename); save != nil {
+				sids = append(sids, UnmarshalSid(rawSid))
+			}
+		}
+		return nil
+	})
+	return sids, err
 }
 
 // Writes the content of the given filename from the most recent Save to the
@@ -254,8 +296,38 @@ func (me *Fhd) Extract(filename string, writer io.Writer) error {
 // (identified by its SID) to the given writer.
 func (me *Fhd) ExtractForSid(sid SID, filename string,
 	writer io.Writer) error {
-	//filename = me.relativePath(filename) // TODO
-	return errors.New("ExtractForSid unimplemented") // TODO
+	rawFilename := []byte(me.relativePath(filename))
+	return me.db.View(func(tx *bolt.Tx) error {
+		saves := tx.Bucket(savesBucket)
+		if saves == nil {
+			return fmt.Errorf("failed to find %q", savesBucket)
+		}
+		save := saves.Bucket(sid.Marshal())
+		if save == nil {
+			return fmt.Errorf("failed to find save %d", sid)
+		}
+		rawEntry := save.Get(rawFilename)
+		if rawEntry == nil {
+			return fmt.Errorf("failed to find file %s in save %d", filename,
+				sid)
+		}
+		entry := UnmarshalEntry(rawEntry)
+		var err error
+		rawReader := bytes.NewReader(entry.Blob)
+		switch entry.Flag {
+		case Raw:
+			_, err = io.Copy(writer, rawReader)
+		case Flate:
+			flateReader := flate.NewReader(rawReader)
+			_, err = io.Copy(writer, flateReader)
+		case Lzw:
+			lzwReader := lzw.NewReader(rawReader, lzw.MSB, 0)
+			_, err = io.Copy(writer, lzwReader)
+		default:
+			return fmt.Errorf("invalid flag %v", entry.Flag)
+		}
+		return err
+	})
 }
 
 // Compact eliminates wasted space in the .fhd file.
