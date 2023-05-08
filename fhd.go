@@ -258,11 +258,6 @@ func (me *Fhd) ExtractForSid(sid SID, filename string,
 	return errors.New("ExtractForSid unimplemented") // TODO
 }
 
-// Rename renames oldFilename to newFilename.
-func (me *Fhd) Rename(oldFilename, newFilename string) error {
-	return errors.New("Rename unimplemented") // TODO
-}
-
 // Compact eliminates wasted space in the .fhd file.
 func (me *Fhd) Compact() error {
 	// temp := me.db.Path() + ".$$$"

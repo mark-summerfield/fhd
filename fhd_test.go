@@ -36,9 +36,6 @@ func TestOpen(t *testing.T) {
 			if states := tx.Bucket(statesBucket); states == nil {
 				t.Error("expected statesBucket, got nil")
 			}
-			if renames := tx.Bucket(renamedBucket); renames == nil {
-				t.Error("expected renamedBucket, got nil")
-			}
 			if saves := tx.Bucket(savesBucket); saves == nil {
 				t.Error("expected savesBucket, got nil")
 			}

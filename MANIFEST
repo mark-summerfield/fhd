@@ -5,8 +5,7 @@
 # TODO implement Compact()
 # TODO implement Delete()
 # TODO implement Purge()
-# TODO test State() & setState() since they work purely on data
-# TODO test Monitored(), Unmonitored(), Ignored() - ditto
+# TODO can I support branches (& therefore merge)?
 
 fhd.go
 fhdx.go
@@ -42,10 +41,6 @@ st.sh
 	}
 	# if renamed only keep newname here
 
-    "renamed" bucket # ???
-	key oldname string
-	value newname string
-
     "saves" bucket
 	key sid int # > 0
 	value bucket
@@ -55,5 +50,4 @@ st.sh
 	    key filename string
 	    value Entry
 
-# TODO branches?
 # vim: syn=yaml

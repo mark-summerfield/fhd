@@ -26,7 +26,6 @@ func (me *Fhd) Dump(writer io.Writer) error {
 	return me.db.View(func(tx *bolt.Tx) error {
 		dumpConfig(tx, write, writeRaw)
 		dumpStates(tx, write, writeRaw)
-		dumpRenamed(tx, write, writeRaw)
 		return dumpSaves(tx, write, writeRaw)
 	})
 }
@@ -77,24 +76,6 @@ func dumpStates(tx *bolt.Tx, write WriteStr, writeRaw WriteRaw) {
 			write(" " + stateInfo.String())
 		}
 
-	}
-}
-
-func dumpRenamed(tx *bolt.Tx, write WriteStr, writeRaw WriteRaw) {
-	renamed := tx.Bucket(renamedBucket)
-	if renamed == nil {
-		write("error: missing renamed\n")
-	} else {
-		write("renamed:\n")
-		cursor := renamed.Cursor()
-		oldName, newName := cursor.First()
-		for ; oldName != nil; oldName, newName = cursor.Next() {
-			write("  ")
-			writeRaw(oldName)
-			write(" → ")
-			writeRaw(newName)
-			write("\n")
-		}
 	}
 }
 

@@ -13,7 +13,6 @@ var (
 
 	configBucket  = []byte("config")
 	statesBucket  = []byte("states")
-	renamedBucket = []byte("renamed")
 	savesBucket   = []byte("saves")
 
 	configFormat = []byte("format")

@@ -28,11 +28,6 @@ func newDb(filename string) (*bolt.DB, error) {
 			return fmt.Errorf("failed to create bucket %q: %s",
 				statesBucket, err)
 		}
-		_, err = tx.CreateBucketIfNotExists(renamedBucket)
-		if err != nil {
-			return fmt.Errorf("failed to create bucket %q: %s",
-				renamedBucket, err)
-		}
 		saves, err := tx.CreateBucketIfNotExists(savesBucket)
 		if err != nil {
 			return fmt.Errorf("failed to create bucket %q: %s", savesBucket,
