@@ -11,9 +11,9 @@ var (
 
 	fileFormat byte = 1
 
-	configBucket  = []byte("config")
-	statesBucket  = []byte("states")
-	savesBucket   = []byte("saves")
+	configBucket = []byte("config")
+	statesBucket = []byte("states")
+	savesBucket  = []byte("saves")
 
 	configFormat = []byte("format")
 	configIgnore = []byte("ignore")
