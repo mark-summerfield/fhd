@@ -80,15 +80,16 @@ func (me *Fhd) monitor(filenames ...string) error {
 		}
 		var err error
 		for _, filename := range filenames {
-			key := []byte(me.relativePath(filename))
+			rawFilename := []byte(me.relativePath(filename))
 			var sid SID
-			rawOldStateInfo := states.Get(key)
+			rawOldStateInfo := states.Get(rawFilename)
 			if rawOldStateInfo != nil {
 				oldStateInfo := UnmarshalStateInfo(rawOldStateInfo)
 				sid = oldStateInfo.Sid
 			}
 			stateInfo := newStateInfo(true, sid)
-			if ierr := states.Put(key, stateInfo.Marshal()); ierr != nil {
+			if ierr := states.Put(rawFilename,
+				stateInfo.Marshal()); ierr != nil {
 				err = errors.Join(err, ierr)
 			}
 		}

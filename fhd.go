@@ -126,16 +126,17 @@ func (me *Fhd) Unmonitor(filenames ...string) error {
 		}
 		var err error
 		for _, filename := range filenames {
-			key := []byte(me.relativePath(filename))
-			rawOldStateInfo := states.Get(key)
+			rawFilename := []byte(me.relativePath(filename))
+			rawOldStateInfo := states.Get(rawFilename)
 			if rawOldStateInfo == nil { // Not Monitored so add to ignores
-				if ierr := ignores.Put(key, emptyValue); ierr != nil {
+				if ierr := ignores.Put(rawFilename,
+					emptyValue); ierr != nil {
 					err = errors.Join(err, ierr)
 				}
 			} else {
 				oldStateInfo := UnmarshalStateInfo(rawOldStateInfo)
 				stateInfo := newStateInfo(false, oldStateInfo.Sid)
-				if ierr := states.Put(key,
+				if ierr := states.Put(rawFilename,
 					stateInfo.Marshal()); ierr != nil {
 					err = errors.Join(err, ierr)
 				}
@@ -394,13 +395,13 @@ func (me *Fhd) Compact() error {
 // If this is the only occurrence of the file, the file's state is set to
 // Ignored.
 func (me *Fhd) Delete(sid int, filename string) error {
-	//filename = me.relativePath(filename) // TODO
+	//rawFilename = []byte(me.relativePath(filename)) // TODO
 	return errors.New("Delete unimplemented") // TODO
 }
 
 // Purges deletes every save of the given file and sets the file's state is
 // set to Ignored.
 func (me *Fhd) Purge(filename string) error {
-	//filename = me.relativePath(filename) // TODO
+	//rawFilename = []byte(me.relativePath(filename)) // TODO
 	return errors.New("Purge unimplemented") // TODO
 }
