@@ -96,40 +96,6 @@ func (me *Fhd) monitor(filenames ...string) error {
 	})
 }
 
-// unmonitor sets the state of every given file to Unmonitored if it is
-// being monitored and preserves its SID. For any file that isn't already
-// Monitored, adds it to the config/ignore list.
-func (me *Fhd) unmonitor(filenames ...string) error {
-	return me.db.Update(func(tx *bolt.Tx) error {
-		states := tx.Bucket(statesBucket)
-		if states == nil {
-			return fmt.Errorf("failed to find %q", statesBucket)
-		}
-		ignores := me.getIgnores(tx)
-		if ignores == nil {
-			return fmt.Errorf("failed to find %q", configIgnore)
-		}
-		var err error
-		for _, filename := range filenames {
-			key := []byte(me.relativePath(filename))
-			rawOldStateInfo := states.Get(key)
-			if rawOldStateInfo == nil { // Not Monitored so add to ignores
-				if ierr := ignores.Put(key, emptyValue); ierr != nil {
-					err = errors.Join(err, ierr)
-				}
-			} else {
-				oldStateInfo := UnmarshalStateInfo(rawOldStateInfo)
-				stateInfo := newStateInfo(false, oldStateInfo.Sid)
-				if ierr := states.Put(key,
-					stateInfo.Marshal()); ierr != nil {
-					err = errors.Join(err, ierr)
-				}
-			}
-		}
-		return err
-	})
-}
-
 func (me *Fhd) monitored(monitored bool) ([]*StateData, error) {
 	stateData := make([]*StateData, 0)
 	err := me.db.View(func(tx *bolt.Tx) error {
@@ -153,38 +119,6 @@ func (me *Fhd) monitored(monitored bool) ([]*StateData, error) {
 		return nil, err
 	}
 	return stateData, nil
-}
-
-func (me *Fhd) ignore(filenames ...string) error {
-	err := me.db.Update(func(tx *bolt.Tx) error {
-		ignores := me.getIgnores(tx)
-		var err error
-		for _, filename := range filenames {
-			if ierr := ignores.Put([]byte(filename),
-				emptyValue); ierr != nil {
-				err = errors.Join(err, ierr)
-			}
-		}
-		return err
-	})
-	return err
-}
-
-func (me *Fhd) ignored() ([]string, error) {
-	ignored := make([]string, 0)
-	err := me.db.View(func(tx *bolt.Tx) error {
-		ignores := me.getIgnores(tx)
-		if ignores == nil {
-			return fmt.Errorf("failed to find %q", configIgnore)
-		}
-		cursor := ignores.Cursor()
-		rawFilename, _ := cursor.First()
-		for ; rawFilename != nil; rawFilename, _ = cursor.Next() {
-			ignored = append(ignored, string(rawFilename))
-		}
-		return nil
-	})
-	return ignored, err
 }
 
 func (me *Fhd) getIgnores(tx *bolt.Tx) *bolt.Bucket {

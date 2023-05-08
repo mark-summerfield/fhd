@@ -61,8 +61,8 @@ func (me *Fhd) FileFormat() (int, error) {
 	return int(fileformat), nil
 }
 
-// States returns the monitoring state of every known file and the SID of
-// the last save it was saved into.
+// States returns the monitoring state of every monitored and unmonitored
+// file and the SID of the last save it was saved into.
 func (me *Fhd) States() ([]*StateData, error) {
 	stateData := make([]*StateData, 0)
 	err := me.db.View(func(tx *bolt.Tx) error {
@@ -94,7 +94,7 @@ func (me *Fhd) Monitor(filenames ...string) (SaveInfo, error) {
 }
 
 // MonitorWithComment adds the given files to be monitored _and_ does an
-// initial Save. Returns the new Save ID (SID).
+// initial Save with the given comment. Returns the new Save ID (SID).
 func (me *Fhd) MonitorWithComment(comment string,
 	filenames ...string) (SaveInfo, error) {
 	err := me.monitor(filenames...)
@@ -111,20 +111,71 @@ func (me *Fhd) Unmonitored() ([]*StateData, error) {
 	return me.monitored(false)
 }
 
-// Unmonitor sets the given files to be unmonitored.
-// Any files not already monitored are added to the ignored list.
+// Unmonitor sets the state of every given file to unmonitored if it is
+// being monitored and preserves its SID. For any file that isn't already
+// monitored, adds it to the ignored list.
 func (me *Fhd) Unmonitor(filenames ...string) error {
-	return me.unmonitor(filenames...)
+	return me.db.Update(func(tx *bolt.Tx) error {
+		states := tx.Bucket(statesBucket)
+		if states == nil {
+			return fmt.Errorf("failed to find %q", statesBucket)
+		}
+		ignores := me.getIgnores(tx)
+		if ignores == nil {
+			return fmt.Errorf("failed to find %q", configIgnore)
+		}
+		var err error
+		for _, filename := range filenames {
+			key := []byte(me.relativePath(filename))
+			rawOldStateInfo := states.Get(key)
+			if rawOldStateInfo == nil { // Not Monitored so add to ignores
+				if ierr := ignores.Put(key, emptyValue); ierr != nil {
+					err = errors.Join(err, ierr)
+				}
+			} else {
+				oldStateInfo := UnmarshalStateInfo(rawOldStateInfo)
+				stateInfo := newStateInfo(false, oldStateInfo.Sid)
+				if ierr := states.Put(key,
+					stateInfo.Marshal()); ierr != nil {
+					err = errors.Join(err, ierr)
+				}
+			}
+		}
+		return err
+	})
 }
 
 // Ignored returns the list of every ignored filename or glob.
 func (me *Fhd) Ignored() ([]string, error) {
-	return me.ignored()
+	ignored := make([]string, 0)
+	err := me.db.View(func(tx *bolt.Tx) error {
+		ignores := me.getIgnores(tx)
+		if ignores == nil {
+			return fmt.Errorf("failed to find %q", configIgnore)
+		}
+		cursor := ignores.Cursor()
+		rawFilename, _ := cursor.First()
+		for ; rawFilename != nil; rawFilename, _ = cursor.Next() {
+			ignored = append(ignored, string(rawFilename))
+		}
+		return nil
+	})
+	return ignored, err
 }
 
 // Ignore adds the given files or globs to the ignored list.
 func (me *Fhd) Ignore(filenames ...string) error {
-	return me.ignore(filenames...)
+	return me.db.Update(func(tx *bolt.Tx) error {
+		ignores := me.getIgnores(tx)
+		var err error
+		for _, filename := range filenames {
+			if ierr := ignores.Put([]byte(filename),
+				emptyValue); ierr != nil {
+				err = errors.Join(err, ierr)
+			}
+		}
+		return err
+	})
 }
 
 // Unignore deletes the given filenames or globs from the ignored list.
@@ -259,8 +310,7 @@ func (me *Fhd) SidForFilename(filename string) (SID, error) {
 	return sid, err
 }
 
-// Returns the all the SIDs for the given filename from most- to
-// least-recent.
+// Returns all the SIDs for the given filename from most- to least-recent.
 func (me *Fhd) SidsForFilename(filename string) ([]SID, error) {
 	rawFilename := []byte(me.relativePath(filename))
 	sids := make([]SID, 0)
