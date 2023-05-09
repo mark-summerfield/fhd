@@ -1,15 +1,15 @@
 # TODO tests:
 # Maybe create test data corresponding to test saves, e.g.,
 #   tdata/1/one.txt
-#   tdata/1/two.svg
+#   tdata/1/two.bmp # should end up being compressed
 #   tdata/1/three.png
 #   tdata/2/one.txt # changed
-#   tdata/2/two.svg # changed
+#   tdata/2/two.bmp # changed
 #   tdata/2/four.txt # added
 #   tdata/3/one.txt # changed
 #   tdata/3/three.png # changed
 #   tdata/4/one.txt # changed
-#   tdata/4/two.svg # changed
+#   tdata/4/two.bmp # changed
 #   tdata/4/three.png # changed
 #   tdata/4/four.txt # changed
 # Then for tests,
