@@ -187,9 +187,6 @@ func (me *Fhd) maybeSaveOne(tx *bolt.Tx, sid SID, filename string,
 }
 
 func (me *Fhd) saveMetadata(save *bolt.Bucket, saveInfo *SaveInfo) error {
-	if save == nil {
-		return errors.New("failed to save metadata")
-	}
 	n := save.Stats().KeyN // number of keys
 	if n == 0 {            // empty so none changed or saved
 		saveInfo.Sid = InvalidSID // make invalid
@@ -211,6 +208,9 @@ func (me *Fhd) saveMetadata(save *bolt.Bucket, saveInfo *SaveInfo) error {
 
 func (me *Fhd) sameAsPrev(saves *bolt.Bucket, newSid SID, filename string,
 	prevSid SID, newSha *SHA256) bool {
+	if prevSid == InvalidSID {
+		return false
+	}
 	entry := me.getEntry(saves, filename, prevSid)
 	if entry == nil {
 		return false // There is no previous entry for this filename.

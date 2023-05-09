@@ -3,7 +3,11 @@
 
 package fhd
 
-import "time"
+import (
+	"fmt"
+	"strings"
+	"time"
+)
 
 type SaveInfo struct {
 	Sid     SID
@@ -21,4 +25,10 @@ func newInvalidSaveInfo() SaveInfo {
 
 func (me *SaveInfo) IsValid() bool {
 	return me.Sid.IsValid()
+}
+
+func (me *SaveInfo) String() string {
+	return fmt.Sprintf("%d@%s%q", me.Sid,
+		strings.ReplaceAll(me.When.Format(time.DateTime), " ", "T"),
+		me.Comment)
 }

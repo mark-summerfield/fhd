@@ -28,16 +28,18 @@ func getRaws(filename string, sha *SHA256) ([]byte, []byte, []byte, error) {
 		wg       sync.WaitGroup
 	)
 	wg.Add(3)
-	go getSha(raw, sha)
-	go getFlate(raw, &rawFlate)
-	go getLzw(raw, &rawLzw)
+	go func() { defer wg.Done(); populateSha(raw, sha) }()
+	go func() { defer wg.Done(); populateFlate(raw, &rawFlate) }()
+	go func() { defer wg.Done(); populateLzw(raw, &rawLzw) }()
 	wg.Wait()
 	return raw, rawFlate.Bytes(), rawLzw.Bytes(), nil
 }
 
-func getSha(raw []byte, sha *SHA256) { *sha = SHA256(sha256.Sum256(raw)) }
+func populateSha(raw []byte, sha *SHA256) {
+	*sha = SHA256(sha256.Sum256(raw))
+}
 
-func getFlate(raw []byte, rawFlate *bytes.Buffer) {
+func populateFlate(raw []byte, rawFlate *bytes.Buffer) {
 	writer, err := flate.NewWriter(rawFlate, 9)
 	if err == nil {
 		_, ierr := writer.Write(raw)
@@ -54,7 +56,7 @@ func getFlate(raw []byte, rawFlate *bytes.Buffer) {
 	}
 }
 
-func getLzw(raw []byte, rawLzw *bytes.Buffer) {
+func populateLzw(raw []byte, rawLzw *bytes.Buffer) {
 	writer := lzw.NewWriter(rawLzw, lzw.MSB, 8)
 	_, err := writer.Write(raw)
 	if err == nil {

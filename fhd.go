@@ -205,6 +205,7 @@ func (me *Fhd) Save(comment string) (SaveInfo, error) {
 	var saveInfo SaveInfo
 	err = me.db.Update(func(tx *bolt.Tx) error {
 		var err error
+		fmt.Println("Save")
 		saveInfo, err = me.newSid(tx, comment)
 		if err != nil {
 			return err // saveInfo is invalid on err
@@ -220,7 +221,11 @@ func (me *Fhd) Save(comment string) (SaveInfo, error) {
 		if saves == nil {
 			return errors.New("missing saves")
 		}
-		return me.saveMetadata(saves.Bucket(sid.Marshal()), &saveInfo)
+		save := saves.Bucket(sid.Marshal())
+		if save == nil {
+			return fmt.Errorf("failed to save metadata for #%d", sid)
+		}
+		return me.saveMetadata(save, &saveInfo)
 	})
 	return saveInfo, err
 }

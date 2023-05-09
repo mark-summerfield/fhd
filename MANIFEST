@@ -1,3 +1,5 @@
+# TODO tests!
+
 # TODO implement Rename() once I figure out how!
 # TODO implement Compact()
 # TODO implement Delete()
@@ -35,7 +37,7 @@ st.sh
 	value StateInfo {
 	    monitored bool
 	    sid int # the most recent sid this file was saved into
-	    mimetype string
+	    mimetype string # so clients can see if they can offer diffs
 	}
 	# if renamed only keep newname here
 

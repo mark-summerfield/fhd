@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/mark-summerfield/gong"
 	bolt "go.etcd.io/bbolt"
 	// "github.com/mark-summerfield/gong"
 	// "golang.org/x/exp/maps"
@@ -181,4 +182,57 @@ func TestSidSequence(t *testing.T) {
 			t.Errorf("unexpected error: %s", err)
 		}
 	}
+}
+
+func Test2(t *testing.T) {
+	dir, err := os.Getwd()
+	if err != nil {
+		dir = gong.AbsPath(".")
+	}
+	_ = os.Chdir(os.TempDir())
+	defer func() { _ = os.Chdir(dir) }()
+	filename := "temp2.fhd"
+	fhd, err := New(filename)
+	defer func() { _ = fhd.Close() }()
+	defer func() { os.Remove(filename) }()
+	if err != nil {
+		t.Errorf("unexpected error: %s", err)
+	} else {
+		states, err := fhd.States()
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if len(states) > 0 {
+			t.Errorf("expected 0 states, got %d", len(states))
+		}
+		file1 := "file1.txt"
+		closer, err := makeTempFile(file1, "This is file1\nLine 2\n")
+		defer closer()
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		file2 := "file2.txt"
+		closer, err = makeTempFile(file2, "This is file2\nMore\nAnd more\n")
+		defer closer()
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		saveInfo, err := fhd.MonitorWithComment("start", file1, file2)
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		fmt.Println(saveInfo)
+		// TODO check saveInfo
+		// TODO extract a file, find sid, etc.
+		// TODO change a file
+		// TODO extract a file, find sid, etc.
+	}
+}
+
+func makeTempFile(filename, content string) (func(), error) {
+	err := os.WriteFile(filename, []byte(content), gong.ModeUserRW)
+	if err != nil {
+		return func() {}, err
+	}
+	return func() { os.Remove(filename) }, nil
 }

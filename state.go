@@ -35,8 +35,13 @@ func (me StateInfo) Marshal() []byte {
 }
 
 func UnmarshalStateInfo(raw []byte) StateInfo {
-	return newStateInfo(raw[8] == 'M', UnmarshalSid(raw[:8]),
-		string(raw[9:]))
+	var stateInfo StateInfo
+	stateInfo.Monitored = raw[SidSize] == 'M'
+	stateInfo.Sid = UnmarshalSid(raw[:SidSize])
+	if len(raw) > SidSize {
+		stateInfo.MimeType = string(raw[SidSize+1:])
+	}
+	return stateInfo
 }
 
 type StateData struct {
