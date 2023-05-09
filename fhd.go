@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/mark-summerfield/gong"
 	bolt "go.etcd.io/bbolt"
@@ -344,18 +343,7 @@ func (me *Fhd) ExtractFile(filename string) (string, error) {
 // (identified by its SID) to new filename, filename#SID.ext, and returns
 // the new filename.
 func (me *Fhd) ExtractFileForSid(sid SID, filename string) (string, error) {
-	dir, base := filepath.Split(filename)
-	ext := filepath.Ext(base)
-	base = base[:len(base)-len(ext)]
-	sep := "#"
-	var extracted string
-	for {
-		extracted = fmt.Sprintf("%s%s%s%d%s", dir, base, sep, sid, ext)
-		if !gong.FileExists(extracted) {
-			break
-		}
-		sep += "#"
-	}
+	extracted := getExtractFilename(sid, filename)
 	file, err := os.OpenFile(extracted, os.O_WRONLY|os.O_CREATE,
 		gong.ModeUserRW)
 	if err != nil {

@@ -92,8 +92,7 @@ func (me *Fhd) monitor(filenames ...string) error {
 				stateInfo = UnmarshalStateInfo(rawOldStateInfo)
 				stateInfo.Monitored = true
 			} else {
-				stateInfo = newStateInfo(true, InvalidSID,
-					getMimeType(filename))
+				stateInfo = newStateInfo(true, InvalidSID, "")
 			}
 			if ierr := states.Put(rawFilename,
 				stateInfo.Marshal()); ierr != nil {

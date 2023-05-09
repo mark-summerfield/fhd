@@ -9,9 +9,12 @@ import (
 	"compress/lzw"
 	"crypto/sha256"
 	"errors"
-	"net/http"
+	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
+
+	"github.com/mark-summerfield/gong"
 )
 
 func getRaws(filename string, sha *SHA256) ([]byte, []byte, []byte, error) {
@@ -65,15 +68,18 @@ func getLzw(raw []byte, rawLzw *bytes.Buffer) {
 	}
 }
 
-func getMimeType(filename string) string {
-	file, err := os.Open(filename)
-	if err == nil {
-		defer file.Close()
-		buffer := make([]byte, 512)
-		_, err := file.Read(buffer)
-		if err == nil {
-			return http.DetectContentType(buffer)
+func getExtractFilename(sid SID, filename string) string {
+	dir, base := filepath.Split(filename)
+	ext := filepath.Ext(base)
+	base = base[:len(base)-len(ext)]
+	sep := "#"
+	var extracted string
+	for {
+		extracted = fmt.Sprintf("%s%s%s%d%s", dir, base, sep, sid, ext)
+		if !gong.FileExists(extracted) {
+			break
 		}
+		sep += "#"
 	}
-	return "application/octet-stream"
+	return extracted
 }
