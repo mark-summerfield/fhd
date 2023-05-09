@@ -123,20 +123,8 @@ func (me *Fhd) Unmonitor(filenames ...string) error {
 		}
 		var err error
 		for _, filename := range filenames {
-			rawFilename := []byte(me.relativePath(filename))
-			rawOldStateInfo := states.Get(rawFilename)
-			if rawOldStateInfo == nil { // Not Monitored so add to ignores
-				if ierr := ignores.Put(rawFilename,
-					emptyValue); ierr != nil {
-					err = errors.Join(err, ierr)
-				}
-			} else {
-				stateInfo := UnmarshalStateInfo(rawOldStateInfo)
-				stateInfo.Monitored = false
-				if ierr := states.Put(rawFilename,
-					stateInfo.Marshal()); ierr != nil {
-					err = errors.Join(err, ierr)
-				}
+			if ierr := me.unmonitor(states, ignores, filename); ierr != nil {
+				err = errors.Join(err, ierr)
 			}
 		}
 		return err
@@ -205,26 +193,27 @@ func (me *Fhd) Save(comment string) (SaveInfo, error) {
 	var saveInfo SaveInfo
 	err = me.db.Update(func(tx *bolt.Tx) error {
 		var err error
-		fmt.Println("Save")
 		saveInfo, err = me.newSid(tx, comment)
 		if err != nil {
 			return err // saveInfo is invalid on err
 		}
 		sid := saveInfo.Sid
-		for _, stateData := range monitored {
-			if ierr := me.maybeSaveOne(tx, sid, stateData.Filename,
-				stateData.Sid); ierr != nil {
-				err = errors.Join(err, ierr)
-			}
-		}
 		saves := tx.Bucket(savesBucket)
 		if saves == nil {
 			return errors.New("missing saves")
 		}
-		/////////////////////////////// TODO do this in separate update?
-		save := saves.Bucket(sid.Marshal())
-		if save == nil {
+		save, err := saves.CreateBucket(sid.Marshal())
+		if err != nil {
 			return fmt.Errorf("failed to save metadata for #%d", sid)
+		}
+		for _, stateData := range monitored {
+			if ierr := me.maybeSaveOne(tx, saves, save, sid,
+				stateData.Filename, stateData.Sid); ierr != nil {
+				err = errors.Join(err, ierr)
+			}
+		}
+		if err != nil {
+			return err
 		}
 		return me.saveMetadata(save, &saveInfo)
 	})

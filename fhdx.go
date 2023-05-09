@@ -128,6 +128,19 @@ func (me *Fhd) monitored(monitored bool) ([]*StateData, error) {
 	return stateData, nil
 }
 
+func (me *Fhd) unmonitor(states, ignores *bolt.Bucket,
+	filename string) error {
+	rawFilename := []byte(me.relativePath(filename))
+	rawOldStateInfo := states.Get(rawFilename)
+	if rawOldStateInfo == nil { // Not Monitored so add to ignores
+		return ignores.Put(rawFilename, emptyValue)
+	} else {
+		stateInfo := UnmarshalStateInfo(rawOldStateInfo)
+		stateInfo.Monitored = false
+		return states.Put(rawFilename, stateInfo.Marshal())
+	}
+}
+
 func (me *Fhd) getIgnores(tx *bolt.Tx) *bolt.Bucket {
 	config := tx.Bucket(configBucket)
 	if config == nil {
@@ -151,12 +164,8 @@ func (me *Fhd) newSid(tx *bolt.Tx, comment string) (SaveInfo, error) {
 // If the new file's SHA256 != prev SHA256 (or there is no prev) we save the
 // file _and_ update the states with the SID for fast access to the file's
 // most recent save.
-func (me *Fhd) maybeSaveOne(tx *bolt.Tx, sid SID, filename string,
-	prevSid SID) error {
-	saves := tx.Bucket(savesBucket)
-	if saves == nil {
-		return errors.New("missing saves")
-	}
+func (me *Fhd) maybeSaveOne(tx *bolt.Tx, saves, save *bolt.Bucket, sid SID,
+	filename string, prevSid SID) error {
 	var sha SHA256
 	raw, rawFlate, rawLzw, err := getRaws(filename, &sha)
 	if err != nil {
@@ -175,7 +184,8 @@ func (me *Fhd) maybeSaveOne(tx *bolt.Tx, sid SID, filename string,
 	case Lzw:
 		entry.Blob = rawLzw
 	}
-	if err = saves.Put(sid.Marshal(), entry.Marshal()); err == nil {
+	rawFilename := []byte(filename)
+	if err = save.Put(rawFilename, entry.Marshal()); err != nil {
 		return err
 	}
 	states := tx.Bucket(statesBucket)
@@ -183,7 +193,7 @@ func (me *Fhd) maybeSaveOne(tx *bolt.Tx, sid SID, filename string,
 		return errors.New("missing states")
 	}
 	stateInfo := newStateInfo(true, sid, http.DetectContentType(raw))
-	return states.Put([]byte(filename), stateInfo.Marshal())
+	return states.Put(rawFilename, stateInfo.Marshal())
 }
 
 func (me *Fhd) saveMetadata(save *bolt.Bucket, saveInfo *SaveInfo) error {
