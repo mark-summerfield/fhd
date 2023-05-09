@@ -9,6 +9,7 @@ import (
 	"compress/lzw"
 	"crypto/sha256"
 	"errors"
+	"net/http"
 	"os"
 	"sync"
 )
@@ -62,4 +63,17 @@ func getLzw(raw []byte, rawLzw *bytes.Buffer) {
 			rawLzw.Reset()
 		}
 	}
+}
+
+func getMimeType(filename string) string {
+	file, err := os.Open(filename)
+	if err == nil {
+		defer file.Close()
+		buffer := make([]byte, 512)
+		_, err := file.Read(buffer)
+		if err == nil {
+			return http.DetectContentType(buffer)
+		}
+	}
+	return "application/octet-stream"
 }

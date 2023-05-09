@@ -4,12 +4,10 @@
 package fhd
 
 import (
-	"bytes"
-	"compress/flate"
-	"compress/lzw"
 	"errors"
 	"fmt"
-	"io"
+	"os"
+	"path/filepath"
 
 	"github.com/mark-summerfield/gong"
 	bolt "go.etcd.io/bbolt"
@@ -134,8 +132,8 @@ func (me *Fhd) Unmonitor(filenames ...string) error {
 					err = errors.Join(err, ierr)
 				}
 			} else {
-				oldStateInfo := UnmarshalStateInfo(rawOldStateInfo)
-				stateInfo := newStateInfo(false, oldStateInfo.Sid)
+				stateInfo := UnmarshalStateInfo(rawOldStateInfo)
+				stateInfo.Monitored = false
 				if ierr := states.Put(rawFilename,
 					stateInfo.Marshal()); ierr != nil {
 					err = errors.Join(err, ierr)
@@ -292,10 +290,10 @@ func (me *Fhd) Sids() ([]SID, error) {
 	return sids, err
 }
 
-// Returns the most recent SID for the given filename.
-func (me *Fhd) SidForFilename(filename string) (SID, error) {
+// Returns the most recent StateInfo for the given filename.
+func (me *Fhd) StateForFilename(filename string) (StateInfo, error) {
 	rawFilename := []byte(me.relativePath(filename))
-	var sid SID
+	var stateInfo StateInfo
 	err := me.db.View(func(tx *bolt.Tx) error {
 		states := tx.Bucket(statesBucket)
 		if states == nil {
@@ -303,12 +301,11 @@ func (me *Fhd) SidForFilename(filename string) (SID, error) {
 		}
 		rawStateInfo := states.Get(rawFilename)
 		if rawStateInfo != nil {
-			stateInfo := UnmarshalStateInfo(rawStateInfo)
-			sid = stateInfo.Sid
+			stateInfo = UnmarshalStateInfo(rawStateInfo)
 		}
 		return nil
 	})
-	return sid, err
+	return stateInfo, err
 }
 
 // Returns all the SIDs for the given filename from most- to least-recent.
@@ -332,53 +329,41 @@ func (me *Fhd) SidsForFilename(filename string) ([]SID, error) {
 	return sids, err
 }
 
-// Writes the content of the given filename from the most recent Save to the
-// given writer.
-func (me *Fhd) Extract(filename string, writer io.Writer) error {
+// Writes the content of the given filename from the most recent Save to
+// new filename, filename#SID.ext, and returns the new filename.
+func (me *Fhd) ExtractFile(filename string) (string, error) {
 	filename = me.relativePath(filename)
-	sid, err := me.SidForFilename(filename)
+	stateInfo, err := me.StateForFilename(filename)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return me.ExtractForSid(sid, filename, writer)
+	return me.ExtractFileForSid(stateInfo.Sid, filename)
 }
 
 // Writes the content of the given filename from the specified Save
-// (identified by its SID) to the given writer.
-func (me *Fhd) ExtractForSid(sid SID, filename string,
-	writer io.Writer) error {
-	rawFilename := []byte(me.relativePath(filename))
-	return me.db.View(func(tx *bolt.Tx) error {
-		saves := tx.Bucket(savesBucket)
-		if saves == nil {
-			return fmt.Errorf("failed to find %q", savesBucket)
+// (identified by its SID) to new filename, filename#SID.ext, and returns
+// the new filename.
+func (me *Fhd) ExtractFileForSid(sid SID, filename string) (string, error) {
+	dir, base := filepath.Split(filename)
+	ext := filepath.Ext(base)
+	base = base[:len(base)-len(ext)]
+	sep := "#"
+	var extracted string
+	for {
+		extracted = fmt.Sprintf("%s%s%s%d%s", dir, base, sep, sid, ext)
+		if !gong.FileExists(extracted) {
+			break
 		}
-		save := saves.Bucket(sid.Marshal())
-		if save == nil {
-			return fmt.Errorf("failed to find save %d", sid)
-		}
-		rawEntry := save.Get(rawFilename)
-		if rawEntry == nil {
-			return fmt.Errorf("failed to find file %s in save %d", filename,
-				sid)
-		}
-		entry := UnmarshalEntry(rawEntry)
-		var err error
-		rawReader := bytes.NewReader(entry.Blob)
-		switch entry.Flag {
-		case Raw:
-			_, err = io.Copy(writer, rawReader)
-		case Flate:
-			flateReader := flate.NewReader(rawReader)
-			_, err = io.Copy(writer, flateReader)
-		case Lzw:
-			lzwReader := lzw.NewReader(rawReader, lzw.MSB, 0)
-			_, err = io.Copy(writer, lzwReader)
-		default:
-			return fmt.Errorf("invalid flag %v", entry.Flag)
-		}
-		return err
-	})
+		sep += "#"
+	}
+	file, err := os.OpenFile(extracted, os.O_WRONLY|os.O_CREATE,
+		gong.ModeUserRW)
+	if err != nil {
+		return extracted, err
+	}
+	defer file.Close()
+	err = me.extractForSid(sid, filename, file)
+	return extracted, err
 }
 
 // Compact eliminates wasted space in the .fhd file.

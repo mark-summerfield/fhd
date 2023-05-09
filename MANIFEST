@@ -35,6 +35,7 @@ st.sh
 	value StateInfo {
 	    monitored bool
 	    sid int # the most recent sid this file was saved into
+	    mimetype string
 	}
 	# if renamed only keep newname here
 

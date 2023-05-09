@@ -4,8 +4,13 @@
 package fhd
 
 import (
+	"bytes"
+	"compress/flate"
+	"compress/lzw"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"path/filepath"
 	"time"
 
@@ -81,13 +86,15 @@ func (me *Fhd) monitor(filenames ...string) error {
 		var err error
 		for _, filename := range filenames {
 			rawFilename := []byte(me.relativePath(filename))
-			var sid SID
+			var stateInfo StateInfo
 			rawOldStateInfo := states.Get(rawFilename)
 			if rawOldStateInfo != nil {
-				oldStateInfo := UnmarshalStateInfo(rawOldStateInfo)
-				sid = oldStateInfo.Sid
+				stateInfo = UnmarshalStateInfo(rawOldStateInfo)
+				stateInfo.Monitored = true
+			} else {
+				stateInfo = newStateInfo(true, InvalidSID,
+					getMimeType(filename))
 			}
-			stateInfo := newStateInfo(true, sid)
 			if ierr := states.Put(rawFilename,
 				stateInfo.Marshal()); ierr != nil {
 				err = errors.Join(err, ierr)
@@ -176,7 +183,7 @@ func (me *Fhd) maybeSaveOne(tx *bolt.Tx, sid SID, filename string,
 	if states == nil {
 		return errors.New("missing states")
 	}
-	stateInfo := newStateInfo(true, sid)
+	stateInfo := newStateInfo(true, sid, http.DetectContentType(raw))
 	return states.Put([]byte(filename), stateInfo.Marshal())
 }
 
@@ -231,4 +238,42 @@ func (me *Fhd) relativePath(filename string) string {
 		return filepath.Clean(filename)
 	}
 	return relPath
+}
+
+// Writes the content of the given filename from the specified Save
+// (identified by its SID) to the given writer.
+func (me *Fhd) extractForSid(sid SID, filename string,
+	writer io.Writer) error {
+	rawFilename := []byte(me.relativePath(filename))
+	return me.db.View(func(tx *bolt.Tx) error {
+		saves := tx.Bucket(savesBucket)
+		if saves == nil {
+			return fmt.Errorf("failed to find %q", savesBucket)
+		}
+		save := saves.Bucket(sid.Marshal())
+		if save == nil {
+			return fmt.Errorf("failed to find save %d", sid)
+		}
+		rawEntry := save.Get(rawFilename)
+		if rawEntry == nil {
+			return fmt.Errorf("failed to find file %s in save %d", filename,
+				sid)
+		}
+		entry := UnmarshalEntry(rawEntry)
+		var err error
+		rawReader := bytes.NewReader(entry.Blob)
+		switch entry.Flag {
+		case Raw:
+			_, err = io.Copy(writer, rawReader)
+		case Flate:
+			flateReader := flate.NewReader(rawReader)
+			_, err = io.Copy(writer, flateReader)
+		case Lzw:
+			lzwReader := lzw.NewReader(rawReader, lzw.MSB, 0)
+			_, err = io.Copy(writer, lzwReader)
+		default:
+			return fmt.Errorf("invalid flag %v", entry.Flag)
+		}
+		return err
+	})
 }

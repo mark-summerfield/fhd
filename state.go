@@ -8,10 +8,11 @@ import "fmt"
 type StateInfo struct {
 	Monitored bool
 	Sid       SID // Most recent SID the corresponding file was saved into
+	MimeType  string
 }
 
-func newStateInfo(monitored bool, sid SID) StateInfo {
-	return StateInfo{Monitored: monitored, Sid: sid}
+func newStateInfo(monitored bool, sid SID, mimeType string) StateInfo {
+	return StateInfo{Monitored: monitored, Sid: sid, MimeType: mimeType}
 }
 
 func (me StateInfo) String() string {
@@ -19,7 +20,7 @@ func (me StateInfo) String() string {
 	if !me.Monitored {
 		monitored = "U"
 	}
-	return fmt.Sprintf("%s#%d", monitored, me.Sid)
+	return fmt.Sprintf("%s#%d:%s", monitored, me.Sid, me.MimeType)
 }
 
 func (me StateInfo) Marshal() []byte {
@@ -29,11 +30,13 @@ func (me StateInfo) Marshal() []byte {
 	if !me.Monitored {
 		monitored = 'U'
 	}
-	return append(raw, monitored)
+	raw = append(raw, monitored)
+	return append(raw, []byte(me.MimeType)...)
 }
 
 func UnmarshalStateInfo(raw []byte) StateInfo {
-	return newStateInfo(raw[8] == 'M', UnmarshalSid(raw[:8]))
+	return newStateInfo(raw[8] == 'M', UnmarshalSid(raw[:8]),
+		string(raw[9:]))
 }
 
 type StateData struct {
