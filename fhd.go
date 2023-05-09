@@ -221,6 +221,7 @@ func (me *Fhd) Save(comment string) (SaveInfo, error) {
 		if saves == nil {
 			return errors.New("missing saves")
 		}
+		/////////////////////////////// TODO do this in separate update?
 		save := saves.Bucket(sid.Marshal())
 		if save == nil {
 			return fmt.Errorf("failed to save metadata for #%d", sid)
