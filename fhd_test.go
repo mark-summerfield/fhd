@@ -221,7 +221,7 @@ func Test2(t *testing.T) {
 		if err != nil {
 			t.Errorf("unexpected error: %s", err)
 		}
-		fmt.Println(saveInfo)
+		fmt.Println(saveInfo.String())
 		// TODO check saveInfo
 		// TODO extract a file, find sid, etc.
 		// TODO change a file
