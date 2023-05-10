@@ -197,11 +197,10 @@ func (me *Fhd) saveMetadata(save *bolt.Bucket, saveInfo *SaveInfo) error {
 	if err != nil {
 		return err
 	}
-	if err = save.Put(savesWhen, rawWhen); err != nil {
+	if err = save.Put(saveWhen, rawWhen); err != nil {
 		return err
 	}
-	if err = save.Put(savesComment,
-		[]byte(saveInfo.Comment)); err != nil {
+	if err = save.Put(saveComment, []byte(saveInfo.Comment)); err != nil {
 		return err
 	}
 	return nil

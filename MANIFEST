@@ -1,4 +1,4 @@
-# TODO tests:
+# TODO tests
 # TODO implement Rename() once I figure out how!
 # TODO implement Compact()
 # TODO implement Delete()
@@ -17,7 +17,7 @@ marshal.go
 util.go
 consts.go
 
-fhd_test.go
+fhd_test.go # TODO
 
 go.mod
 

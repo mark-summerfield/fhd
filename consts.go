@@ -17,8 +17,10 @@ var (
 
 	configFormat = []byte("format")
 	configIgnore = []byte("ignore")
-	savesWhen    = []byte("*when")
-	savesComment = []byte("*comment")
+
+	saveWhen           = []byte("*when")
+	saveComment        = []byte("*comment")
+	savePredefinedKeys = 2 // how many of the above
 
 	emptyValue = []byte{}
 

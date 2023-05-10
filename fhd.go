@@ -243,13 +243,13 @@ func (me *Fhd) SaveInfo(sid SID) SaveInfo {
 		}
 		save := saves.Bucket(sid.Marshal())
 		if save != nil {
-			rawWhen := save.Get(savesWhen)
+			rawWhen := save.Get(saveWhen)
 			when, err := UnmarshalTime(rawWhen)
 			if err != nil {
 				return err
 			}
 			var comment string
-			rawComment := save.Get(savesComment)
+			rawComment := save.Get(saveComment)
 			if rawComment != nil {
 				comment = string(rawComment)
 			}
@@ -263,7 +263,31 @@ func (me *Fhd) SaveInfo(sid SID) SaveInfo {
 	return saveInfo
 }
 
-// Returns the most recent Save ID (SID) or 0 on error.
+// Len returns the number of saved files in the most recent save.
+func (me *Fhd) Len() int {
+	return me.LenForSid(me.Sid())
+}
+
+// LenForSid returns the number of saved files in the specified save.
+func (me *Fhd) LenForSid(sid SID) int {
+	count := 0
+	if !sid.IsValid() {
+		return 0
+	}
+	_ = me.db.View(func(tx *bolt.Tx) error {
+		saves := tx.Bucket(savesBucket)
+		if saves != nil {
+			save := saves.Bucket(sid.Marshal())
+			if save != nil {
+				count = save.Stats().KeyN - savePredefinedKeys
+			}
+		}
+		return nil
+	})
+	return count
+}
+
+// Sid returns the most recent Save ID (SID) or 0 on error.
 func (me *Fhd) Sid() SID {
 	var sid SID
 	_ = me.db.View(func(tx *bolt.Tx) error {

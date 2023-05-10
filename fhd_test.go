@@ -276,6 +276,9 @@ func Test_tdata(t *testing.T) {
 		if len(states) != 4 {
 			t.Errorf("expected 4 states, got %d", len(states))
 		}
+		if len(states) != fhd.Len() {
+			t.Errorf("expected 4 files, got %d", fhd.Len())
+		}
 		var buffer bytes.Buffer
 		for _, state := range states {
 			err = fhd.Extract(state.Filename, &buffer)
@@ -288,6 +291,7 @@ func Test_tdata(t *testing.T) {
 			}
 			buffer.Reset()
 		}
+		//_ = fhd.Dump()
 		// TODO
 		// cp tdata.fhd ../2
 		// cd ../2

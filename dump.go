@@ -110,13 +110,13 @@ func dumpSave(saves *bolt.Bucket, rawSid []byte, write WriteStr,
 	if save == nil {
 		write("error: missing save\n")
 	} else {
-		rawWhen := save.Get(savesWhen)
+		rawWhen := save.Get(saveWhen)
 		when, err := UnmarshalTime(rawWhen)
 		if err != nil {
 			return err
 		}
 		write(when.Format(time.DateTime))
-		rawComment := save.Get(savesComment)
+		rawComment := save.Get(saveComment)
 		if len(rawComment) > 0 {
 			write(" ")
 			writeRaw(rawComment)
@@ -125,8 +125,8 @@ func dumpSave(saves *bolt.Bucket, rawSid []byte, write WriteStr,
 		cursor := save.Cursor()
 		rawFilename, rawEntry := cursor.First()
 		for ; rawFilename != nil; rawFilename, rawEntry = cursor.Next() {
-			if slices.Equal(rawFilename, savesWhen) ||
-				slices.Equal(rawFilename, savesComment) {
+			if slices.Equal(rawFilename, saveWhen) ||
+				slices.Equal(rawFilename, saveComment) {
 				continue // these aren't filenames
 			}
 			dumpEntry(rawFilename, rawEntry, write, writeRaw)
