@@ -4,8 +4,12 @@
 package fhd
 
 import (
+	"bytes"
+	"compress/flate"
+	"compress/lzw"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/mark-summerfield/gong"
@@ -345,8 +349,57 @@ func (me *Fhd) ExtractFileForSid(sid SID, filename string) (string, error) {
 		return extracted, err
 	}
 	defer file.Close()
-	err = me.extractForSid(sid, filename, file)
+	err = me.ExtractForSid(sid, filename, file)
 	return extracted, err
+}
+
+// Writes the content of the given filename from the most recent Save
+// to the given writer.
+func (me *Fhd) Extract(filename string, writer io.Writer) error {
+	filename = me.relativePath(filename)
+	stateInfo, err := me.StateForFilename(filename)
+	if err != nil {
+		return err
+	}
+	return me.ExtractForSid(stateInfo.Sid, filename, writer)
+}
+
+// Writes the content of the given filename from the specified Save
+// (identified by its SID) to the given writer.
+func (me *Fhd) ExtractForSid(sid SID, filename string,
+	writer io.Writer) error {
+	rawFilename := []byte(me.relativePath(filename))
+	return me.db.View(func(tx *bolt.Tx) error {
+		saves := tx.Bucket(savesBucket)
+		if saves == nil {
+			return fmt.Errorf("failed to find %q", savesBucket)
+		}
+		save := saves.Bucket(sid.Marshal())
+		if save == nil {
+			return fmt.Errorf("failed to find save %d", sid)
+		}
+		rawEntry := save.Get(rawFilename)
+		if rawEntry == nil {
+			return fmt.Errorf("failed to find file %s in save %d", filename,
+				sid)
+		}
+		entry := UnmarshalEntry(rawEntry)
+		var err error
+		rawReader := bytes.NewReader(entry.Blob)
+		switch entry.Flag {
+		case Raw:
+			_, err = io.Copy(writer, rawReader)
+		case Flate:
+			flateReader := flate.NewReader(rawReader)
+			_, err = io.Copy(writer, flateReader)
+		case Lzw:
+			lzwReader := lzw.NewReader(rawReader, lzw.MSB, 0)
+			_, err = io.Copy(writer, lzwReader)
+		default:
+			return fmt.Errorf("invalid flag %v", entry.Flag)
+		}
+		return err
+	})
 }
 
 // Compact eliminates wasted space in the .fhd file.

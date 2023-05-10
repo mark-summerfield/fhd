@@ -31,7 +31,7 @@
 # TODO implement Purge()
 # TODO can I support branches (& therefore merge)?
 
-fhd.go # Save
+fhd.go
 fhdx.go
 dump.go
 entry.go
