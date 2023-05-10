@@ -221,11 +221,14 @@ func Test2(t *testing.T) {
 		if err != nil {
 			t.Errorf("unexpected error: %s", err)
 		}
-		fmt.Println(saveInfo.String())
-		// TODO check saveInfo
-		// TODO extract a file, find sid, etc.
-		// TODO change a file
-		// TODO extract a file, find sid, etc.
+		if saveInfo.Sid != 1 {
+			t.Errorf("expected SID of 1, got %d", saveInfo.Sid)
+		}
+		expected := "start"
+		if saveInfo.Comment != expected {
+			t.Errorf("expected Comment of %q, got %q", expected,
+				saveInfo.Comment)
+		}
 	}
 }
 

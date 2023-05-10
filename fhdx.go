@@ -161,14 +161,14 @@ func (me *Fhd) newSid(tx *bolt.Tx, comment string) (SaveInfo, error) {
 // file _and_ update the states with the SID for fast access to the file's
 // most recent save.
 func (me *Fhd) maybeSaveOne(tx *bolt.Tx, saves, save *bolt.Bucket, sid SID,
-	filename string, prevSid SID) error {
+	filename string, prevSid SID) (bool, error) {
 	var sha SHA256
 	raw, rawFlate, rawLzw, err := getRaws(filename, &sha)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if me.sameAsPrev(saves, sid, filename, prevSid, &sha) {
-		return nil // No need to save if same as before.
+		return false, nil // No need to save if same as before.
 	}
 	flag := flagForSizes(len(raw), len(rawFlate), len(rawLzw))
 	entry := newEntry(sha, flag)
@@ -182,32 +182,27 @@ func (me *Fhd) maybeSaveOne(tx *bolt.Tx, saves, save *bolt.Bucket, sid SID,
 	}
 	rawFilename := []byte(filename)
 	if err = save.Put(rawFilename, entry.Marshal()); err != nil {
-		return err
+		return true, err
 	}
 	states := tx.Bucket(statesBucket)
 	if states == nil {
-		return errors.New("missing states")
+		return true, errors.New("missing states")
 	}
 	stateInfo := newStateInfo(true, sid, http.DetectContentType(raw))
-	return states.Put(rawFilename, stateInfo.Marshal())
+	return true, states.Put(rawFilename, stateInfo.Marshal())
 }
 
 func (me *Fhd) saveMetadata(save *bolt.Bucket, saveInfo *SaveInfo) error {
-	n := save.Stats().KeyN // number of keys
-	if n == 0 {            // empty so none changed or saved
-		saveInfo.Sid = InvalidSID // make invalid
-	} else { // nonempty so at least one changed and saved
-		rawWhen, err := saveInfo.When.MarshalBinary()
-		if err != nil {
-			return err
-		}
-		if err = save.Put(savesWhen, rawWhen); err != nil {
-			return err
-		}
-		if err = save.Put(savesComment,
-			[]byte(saveInfo.Comment)); err != nil {
-			return err
-		}
+	rawWhen, err := saveInfo.When.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	if err = save.Put(savesWhen, rawWhen); err != nil {
+		return err
+	}
+	if err = save.Put(savesComment,
+		[]byte(saveInfo.Comment)); err != nil {
+		return err
 	}
 	return nil
 }

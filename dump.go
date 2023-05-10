@@ -6,6 +6,7 @@ package fhd
 import (
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"golang.org/x/exp/slices"
@@ -18,9 +19,13 @@ type (
 	WriteRaw func([]byte)
 )
 
-// Dump writes data from the underlying database to the writer purely for
+func (me *Fhd) Dump() error {
+	return me.DumpTo(os.Stderr)
+}
+
+// DumpTo writes data from the underlying database to the writer purely for
 // debugging and testing.
-func (me *Fhd) Dump(writer io.Writer) error {
+func (me *Fhd) DumpTo(writer io.Writer) error {
 	write := func(text string) { _, _ = writer.Write([]byte(text)) }
 	writeRaw := func(raw []byte) { _, _ = writer.Write(raw) }
 	return me.db.View(func(tx *bolt.Tx) error {
@@ -74,6 +79,7 @@ func dumpStates(tx *bolt.Tx, write WriteStr, writeRaw WriteRaw) {
 			writeRaw(rawFilename)
 			stateInfo := UnmarshalStateInfo(rawStateInfo)
 			write(" " + stateInfo.String())
+			write("\n")
 		}
 
 	}
@@ -116,24 +122,23 @@ func dumpSave(saves *bolt.Bucket, rawSid []byte, write WriteStr,
 			writeRaw(rawComment)
 		}
 		write("\n")
-		filesCursor := save.Cursor()
-		filename, rawEntry := filesCursor.First()
-		for ; filename != nil; filename,
-			rawEntry = filesCursor.Next() {
-			if slices.Equal(filename, savesWhen) ||
-				slices.Equal(filename, savesComment) {
+		cursor := save.Cursor()
+		rawFilename, rawEntry := cursor.First()
+		for ; rawFilename != nil; rawFilename, rawEntry = cursor.Next() {
+			if slices.Equal(rawFilename, savesWhen) ||
+				slices.Equal(rawFilename, savesComment) {
 				continue // these aren't filenames
 			}
-			dumpEntry(filename, rawEntry, write, writeRaw)
+			dumpEntry(rawFilename, rawEntry, write, writeRaw)
 		}
 	}
 	return nil
 }
 
-func dumpEntry(filename []byte, rawEntry []byte, write WriteStr,
+func dumpEntry(rawFilename []byte, rawEntry []byte, write WriteStr,
 	writeRaw WriteRaw) {
 	write("    ")
-	writeRaw(filename)
+	writeRaw(rawFilename)
 	entry := UnmarshalEntry(rawEntry)
 	write(" " + entry.String() + "\n")
 }

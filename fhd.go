@@ -210,16 +210,24 @@ func (me *Fhd) Save(comment string) (SaveInfo, error) {
 		if err != nil {
 			return fmt.Errorf("failed to save metadata for #%d", sid)
 		}
+		count := 0
 		for _, stateData := range monitored {
-			if ierr := me.maybeSaveOne(tx, saves, save, sid,
-				stateData.Filename, stateData.Sid); ierr != nil {
+			saved, ierr := me.maybeSaveOne(tx, saves, save, sid,
+				stateData.Filename, stateData.Sid)
+			if ierr != nil {
 				err = errors.Join(err, ierr)
+			}
+			if saved {
+				count++
 			}
 		}
 		if err != nil {
 			return err
 		}
-		return me.saveMetadata(save, &saveInfo)
+		if count > 0 {
+			return me.saveMetadata(save, &saveInfo)
+		}
+		return nil
 	})
 	return saveInfo, err
 }
