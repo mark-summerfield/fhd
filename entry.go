@@ -5,6 +5,7 @@ package fhd
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"strings"
@@ -39,15 +40,17 @@ func (me *Entry) Marshal() []byte {
 // String is for Dump() and debugging.
 func (me *Entry) String() string {
 	var text strings.Builder
-	text.WriteString(fmt.Sprintf("SHA256=%v %s ", me.Sha, me.Flag))
+	text.WriteString(fmt.Sprintf("%s ", me.Flag))
 	if me.Flag == Raw && strings.HasPrefix(
 		http.DetectContentType(me.Blob), "text") {
 		text.WriteByte('"')
-		text.WriteString(gong.ElideMiddle(string(me.Blob), 40))
+		text.WriteString(gong.ElideMiddle(string(me.Blob), 32))
 		text.WriteByte('"')
 	} else {
 		text.WriteString(gong.Commas(len(me.Blob)))
 		text.WriteString(" bytes")
 	}
+	text.WriteString(fmt.Sprintf(" SHA256=%s ", gong.ElideMiddle(
+		hex.EncodeToString(me.Sha[:]), 24)))
 	return text.String()
 }

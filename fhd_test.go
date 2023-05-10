@@ -1,6 +1,7 @@
 package fhd
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/mark-summerfield/gong"
 	bolt "go.etcd.io/bbolt"
+	"golang.org/x/exp/slices"
 	// "github.com/mark-summerfield/gong"
 	// "golang.org/x/exp/maps"
 	// "golang.org/x/exp/slices"
@@ -230,6 +232,81 @@ func Test2(t *testing.T) {
 				saveInfo.Comment)
 		}
 	}
+}
+
+func Test_tdata(t *testing.T) {
+	dir, err := os.Getwd()
+	if err != nil {
+		dir = gong.AbsPath(".")
+	}
+	defer func() { _ = os.Chdir(dir) }()
+	_ = os.Chdir("tdata/1")
+	filename := "tdata.fhd"
+	fhd, err := New(filename)
+	defer func() { _ = fhd.Close() }()
+	defer func() { os.Remove(filename) }()
+	if err != nil {
+		t.Errorf("unexpected error: %s", err)
+	} else {
+		states, err := fhd.States()
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if len(states) > 0 {
+			t.Errorf("expected 0 states, got %d", len(states))
+		}
+		files := []string{"battery.png", "computer.bmp", "ring.py",
+			"wordsearch.pyw"}
+		expected := "started"
+		saveInfo, err := fhd.MonitorWithComment(expected, files...)
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if saveInfo.Sid != 1 {
+			t.Errorf("expected SID of 1, got %d", saveInfo.Sid)
+		}
+		if saveInfo.Comment != expected {
+			t.Errorf("expected Comment of %q, got %q", expected,
+				saveInfo.Comment)
+		}
+		states, err = fhd.States()
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if len(states) != 4 {
+			t.Errorf("expected 4 states, got %d", len(states))
+		}
+		var buffer bytes.Buffer
+		for _, state := range states {
+			err = fhd.Extract(state.Filename, &buffer)
+			if err != nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			raw := buffer.Bytes()
+			if !compareFileWithRaw(state.Filename, raw) {
+				t.Errorf("expected equal for %s", state.Filename)
+			}
+			buffer.Reset()
+		}
+		// TODO
+		// cp tdata.fhd ../2
+		// cd ../2
+		// do work e.g., save & extract to check tdata.fhd
+		// cp tdata.fhd ../3
+		// cd ../3
+		// do work e.g., save & extract to check tdata.fhd
+		// cp tdata.fhd ../4
+		// cd ../4
+		// do work e.g., save & extract to check tdata.fhd
+	}
+}
+
+func compareFileWithRaw(filename string, raw []byte) bool {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return false
+	}
+	return slices.Equal(data, raw)
 }
 
 func makeTempFile(filename, content string) (func(), error) {

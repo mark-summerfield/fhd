@@ -56,3 +56,7 @@ func newState(filename string, stateInfo StateInfo) *StateData {
 func newStateFromRaw(rawFilename []byte, rawStateInfo []byte) *StateData {
 	return newState(string(rawFilename), UnmarshalStateInfo(rawStateInfo))
 }
+
+func (me StateData) String() string {
+	return fmt.Sprintf("%q%s", me.Filename, me.StateInfo)
+}

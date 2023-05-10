@@ -1,5 +1,5 @@
 #!/bin/bash
-clc -s -e fhd_test.go
+clc -s -e fhd_test.go tdata
 cat Version.dat
 go mod tidy
 go fmt .

@@ -1,30 +1,4 @@
 # TODO tests:
-# Maybe create test data corresponding to test saves, e.g.,
-#   tdata/1/one.txt
-#   tdata/1/two.bmp # should end up being compressed
-#   tdata/1/three.png
-#   tdata/2/one.txt # changed
-#   tdata/2/two.bmp # changed
-#   tdata/2/four.txt # added
-#   tdata/3/one.txt # changed
-#   tdata/3/three.png # changed
-#   tdata/4/one.txt # changed
-#   tdata/4/two.bmp # changed
-#   tdata/4/three.png # changed
-#   tdata/4/four.txt # changed
-# Then for tests,
-#   cd tdata/1
-#   do work e.g., for 1 monitor (implicit save) to tdata.fhd & extract to check
-#   mv tdata.fhd ../2
-#   cd ../2
-#   do work e.g., save & extract to check tdata.fhd
-#   mv tdata.fhd ../3
-#   cd ../3
-#   do work e.g., save & extract to check tdata.fhd
-#   mv tdata.fhd ../4
-#   cd ../4
-#   do work e.g., save & extract to check tdata.fhd
-
 # TODO implement Rename() once I figure out how!
 # TODO implement Compact()
 # TODO implement Delete()
