@@ -44,6 +44,6 @@ func UnmarshalRenameVal(raw []byte) RenameVal {
 	index += uint16size
 	renameVal.OldFilename = string(raw[index : index+size])
 	index += size
-	renameVal.OldSid = UnmarshalSid(raw[size : size+SidSize])
+	renameVal.OldSid = UnmarshalSid(raw[index : index+SidSize])
 	return renameVal
 }
