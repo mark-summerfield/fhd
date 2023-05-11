@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/mark-summerfield/gong"
@@ -291,7 +293,12 @@ func Test_tdata(t *testing.T) {
 			}
 			buffer.Reset()
 		}
-		//_ = fhd.Dump()
+		buffer.Reset()
+		_ = fhd.DumpTo(&buffer)
+		actual := buffer.String()
+		if normalized(actual) != normalized(expected1) {
+			t.Error("DumpTo doesn't match expected1")
+		}
 		// TODO
 		// cp tdata.fhd ../2
 		// cd ../2
@@ -302,6 +309,19 @@ func Test_tdata(t *testing.T) {
 		// cp tdata.fhd ../4
 		// cd ../4
 		// do work e.g., save & extract to check tdata.fhd
+		_ = os.Chdir("tdata/1")
+		buffer.Reset()
+		for _, state := range states {
+			err = fhd.ExtractForSid(1, state.Filename, &buffer)
+			if err != nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			raw := buffer.Bytes()
+			if !compareFileWithRaw(state.Filename, raw) {
+				t.Errorf("expected equal for %s", state.Filename)
+			}
+			buffer.Reset()
+		}
 	}
 }
 
@@ -320,3 +340,27 @@ func makeTempFile(filename, content string) (func(), error) {
 	}
 	return func() { os.Remove(filename) }, nil
 }
+
+func normalized(text string) string {
+	rx := regexp.MustCompile(`20\d\d-\d\d-\d\d \d\d:\d\d:\d\d`)
+	return rx.ReplaceAllLiteralString(strings.TrimSpace(text),
+		"<TIMESTAMP>")
+}
+
+const (
+	expected1 = `config
+  format=1
+  ignore= "*#[0-9].*" "*.a" "*.bak" "*.class" "*.dll" "*.exe" "*.fhd" "*.jar" "*.ld" "*.ldx" "*.li" "*.lix" "*.o" "*.obj" "*.py[co]" "*.rs.bk" "*.so" "*.sw[nop]" "*.swp" "*.tmp" "*~" "gpl-[0-9].[0-9].txt" "louti[0-9]*" "moc_*.cpp" "qrc_*.cpp" "ui_*.h"
+states:
+  battery.png M #1:image/png
+  computer.bmp M #1:image/bmp
+  ring.py M #1:text/plain; charset=utf-8
+  wordsearch.pyw M #1:text/plain; charset=utf-8
+renamed:
+saves:
+  sid #1: 2023-05-11 08:45:38 started
+    battery.png R 2,525 bytes SHA256=7c94b6962b6f…7b6dfdb68c6 
+    computer.bmp F 3,693 bytes SHA256=d274b3d4b89c…a858ff627ea 
+    ring.py F 657 bytes SHA256=831de79f9c70…af3d6b9266b 
+    wordsearch.pyw F 1,296 bytes SHA256=432823716ba1…123467d5a6c`
+)
