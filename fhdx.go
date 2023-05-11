@@ -177,7 +177,7 @@ func (me *Fhd) newSid(tx *bolt.Tx, comment string) (SaveItem, error) {
 // most recent save.
 func (me *Fhd) maybeSaveOne(tx *bolt.Tx, saves, save *bolt.Bucket, sid SID,
 	filename string, prevSid SID) (bool, error) {
-	var sha SHA256
+	var sha shA256
 	raw, rawFlate, rawLzw, err := getRaws(filename, &sha)
 	if err != nil {
 		return false, err
@@ -188,11 +188,11 @@ func (me *Fhd) maybeSaveOne(tx *bolt.Tx, saves, save *bolt.Bucket, sid SID,
 	flag := flagForSizes(len(raw), len(rawFlate), len(rawLzw))
 	entry := newEntry(sha, flag)
 	switch flag {
-	case Raw:
+	case rawFlag:
 		entry.Blob = raw
-	case Flate:
+	case flateFlag:
 		entry.Blob = rawFlate
-	case Lzw:
+	case lzwFlag:
 		entry.Blob = rawLzw
 	}
 	rawFilename := []byte(filename)
@@ -222,7 +222,7 @@ func (me *Fhd) saveMetadata(save *bolt.Bucket, saveItem *SaveItem) error {
 }
 
 func (me *Fhd) sameAsPrev(saves *bolt.Bucket, newSid SID, filename string,
-	prevSid SID, newSha *SHA256) bool {
+	prevSid SID, newSha *shA256) bool {
 	if prevSid == InvalidSID {
 		return false
 	}
@@ -234,7 +234,7 @@ func (me *Fhd) sameAsPrev(saves *bolt.Bucket, newSid SID, filename string,
 }
 
 func (me *Fhd) getEntry(saves *bolt.Bucket, filename string,
-	sid SID) *Entry {
+	sid SID) *entry {
 	save := saves.Bucket(sid.marshal())
 	if save == nil {
 		return nil

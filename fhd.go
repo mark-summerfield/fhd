@@ -419,12 +419,12 @@ func (me *Fhd) ExtractForSid(sid SID, filename string,
 		var err error
 		rawReader := bytes.NewReader(entry.Blob)
 		switch entry.Flag {
-		case Raw:
+		case rawFlag:
 			_, err = io.Copy(writer, rawReader)
-		case Flate:
+		case flateFlag:
 			flateReader := flate.NewReader(rawReader)
 			_, err = io.Copy(writer, flateReader)
-		case Lzw:
+		case lzwFlag:
 			lzwReader := lzw.NewReader(rawReader, lzw.MSB, 0)
 			_, err = io.Copy(writer, lzwReader)
 		default:

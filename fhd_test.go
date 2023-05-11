@@ -63,26 +63,26 @@ func TestOpen(t *testing.T) {
 }
 
 func TestFlagForSizes(t *testing.T) {
-	if flag := flagForSizes(1000, 997, 998); flag != Raw {
-		t.Errorf("expected Raw, got %s", flag)
+	if flag := flagForSizes(1000, 997, 998); flag != rawFlag {
+		t.Errorf("expected rawFlag, got %s", flag)
 	}
-	if flag := flagForSizes(1000, 945, 998); flag != Flate {
-		t.Errorf("expected Flate, got %s", flag)
+	if flag := flagForSizes(1000, 945, 998); flag != flateFlag {
+		t.Errorf("expected flateFlag, got %s", flag)
 	}
-	if flag := flagForSizes(1000, 998, 949); flag != Lzw {
-		t.Errorf("expected Lzw, got %s", flag)
+	if flag := flagForSizes(1000, 998, 949); flag != lzwFlag {
+		t.Errorf("expected lzwFlag, got %s", flag)
 	}
-	if flag := flagForSizes(1000, 0, 990); flag != Raw {
-		t.Errorf("expected Raw, got %s", flag)
+	if flag := flagForSizes(1000, 0, 990); flag != rawFlag {
+		t.Errorf("expected rawFlag, got %s", flag)
 	}
-	if flag := flagForSizes(1000, 990, 0); flag != Raw {
-		t.Errorf("expected Raw, got %s", flag)
+	if flag := flagForSizes(1000, 990, 0); flag != rawFlag {
+		t.Errorf("expected rawFlag, got %s", flag)
 	}
-	if flag := flagForSizes(1000, 889, 0); flag != Flate {
-		t.Errorf("expected Flate, got %s", flag)
+	if flag := flagForSizes(1000, 889, 0); flag != flateFlag {
+		t.Errorf("expected flateFlag, got %s", flag)
 	}
-	if flag := flagForSizes(1000, 0, 889); flag != Lzw {
-		t.Errorf("expected Lzw, got %s", flag)
+	if flag := flagForSizes(1000, 0, 889); flag != lzwFlag {
+		t.Errorf("expected lzwFlag, got %s", flag)
 	}
 }
 

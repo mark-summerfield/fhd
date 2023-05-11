@@ -5,27 +5,27 @@ package fhd
 
 import "fmt"
 
-type RenameVal struct {
+type renameVal struct {
 	NewFilename string
 	OldFilename string
 	OldSid      SID
 }
 
-func newRenameVal(newFilename, oldFilename string, sid SID) RenameVal {
-	return RenameVal{NewFilename: newFilename, OldFilename: oldFilename,
+func newRenameVal(newFilename, oldFilename string, sid SID) *renameVal {
+	return &renameVal{NewFilename: newFilename, OldFilename: oldFilename,
 		OldSid: sid}
 }
 
-func (me RenameVal) String() string {
+func (me renameVal) String() string {
 	return fmt.Sprintf("%s→%s#%d", me.NewFilename, me.OldFilename,
 		me.OldSid)
 }
 
-func (me RenameVal) marshal() []byte {
+func (me renameVal) marshal() []byte {
 	rawNewFilename := []byte(me.NewFilename) // max len 64K bytes
 	rawOldFilename := []byte(me.OldFilename) // max len 64K bytes
 	size := uint16size + len(rawNewFilename) + uint16size +
-		len(rawOldFilename) + SidSize
+		len(rawOldFilename) + sidSize
 	raw := make([]byte, 0, size)
 	raw = append(raw, marshalUint16(uint16(len(rawNewFilename)))...)
 	raw = append(raw, rawNewFilename...)
@@ -34,8 +34,8 @@ func (me RenameVal) marshal() []byte {
 	return append(raw, me.OldSid.marshal()...)
 }
 
-func unmarshalRenameVal(raw []byte) RenameVal {
-	var renameVal RenameVal
+func unmarshalRenameVal(raw []byte) renameVal {
+	var renameVal renameVal
 	index := uint16size
 	size := int(unmarshalUint16(raw[:index]))
 	renameVal.NewFilename = string(raw[index : index+size])
@@ -44,6 +44,6 @@ func unmarshalRenameVal(raw []byte) RenameVal {
 	index += uint16size
 	renameVal.OldFilename = string(raw[index : index+size])
 	index += size
-	renameVal.OldSid = unmarshalSid(raw[index : index+SidSize])
+	renameVal.OldSid = unmarshalSid(raw[index : index+sidSize])
 	return renameVal
 }

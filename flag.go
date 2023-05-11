@@ -4,35 +4,35 @@
 package fhd
 
 const (
-	Raw Flag = iota
-	Flate
-	Lzw
+	rawFlag flag = iota
+	flateFlag
+	lzwFlag
 )
 
-type Flag byte
+type flag byte
 
-func (me Flag) String() string {
+func (me flag) String() string {
 	switch me {
-	case Flate:
+	case flateFlag:
 		return "F"
-	case Lzw:
+	case lzwFlag:
 		return "L"
 	}
 	return "R"
 }
 
-func flagForSizes(rawSize, flateSize, lzwSize int) Flag {
+func flagForSizes(rawSize, flateSize, lzwSize int) flag {
 	maxSize := int(float64(rawSize) * 0.95)
 	if (flateSize > maxSize && lzwSize > maxSize) || (flateSize == 0 &&
 		lzwSize == 0) {
-		return Raw
+		return rawFlag
 	}
 	if flateSize > 0 && flateSize < maxSize && (lzwSize == 0 ||
 		(lzwSize > 0 && flateSize < lzwSize)) {
-		return Flate
+		return flateFlag
 	}
 	if lzwSize > 0 && lzwSize < maxSize {
-		return Lzw
+		return lzwFlag
 	}
-	return Raw
+	return rawFlag
 }

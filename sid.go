@@ -10,7 +10,7 @@ import (
 
 const (
 	InvalidSID = 0
-	SidSize    = 4 // *must* match type SID's size
+	sidSize    = 4 // *must* match type SID's size
 )
 
 type SID uint32 // allows for 4 billion saves
@@ -18,7 +18,7 @@ type SID uint32 // allows for 4 billion saves
 func (me SID) IsValid() bool { return me != InvalidSID }
 
 func (me SID) marshal() []byte {
-	raw := make([]byte, SidSize)
+	raw := make([]byte, sidSize)
 	binary.BigEndian.PutUint32(raw, uint32(me))
 	return raw
 }

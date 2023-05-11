@@ -13,24 +13,24 @@ import (
 	"github.com/mark-summerfield/gong"
 )
 
-type SHA256 [sha256.Size]byte
+type shA256 [sha256.Size]byte
 
-type Entry struct {
-	Sha  SHA256
-	Flag Flag
+type entry struct {
+	Sha  shA256
+	Flag flag
 	Blob []byte
 }
 
-func newEntry(sha SHA256, flag Flag) *Entry {
-	return &Entry{Sha: sha, Flag: flag}
+func newEntry(sha shA256, flag flag) *entry {
+	return &entry{Sha: sha, Flag: flag}
 }
 
-func unmarshalEntry(raw []byte) *Entry {
-	return &Entry{Sha: SHA256(raw[:sha256.Size]),
-		Flag: Flag(raw[sha256.Size]), Blob: raw[sha256.Size+1:]}
+func unmarshalEntry(raw []byte) *entry {
+	return &entry{Sha: shA256(raw[:sha256.Size]),
+		Flag: flag(raw[sha256.Size]), Blob: raw[sha256.Size+1:]}
 }
 
-func (me *Entry) marshal() []byte {
+func (me *entry) marshal() []byte {
 	raw := make([]byte, 0, sha256.Size+1+len(me.Blob))
 	raw = append(raw, me.Sha[:]...)
 	raw = append(raw, byte(me.Flag))
@@ -38,10 +38,10 @@ func (me *Entry) marshal() []byte {
 }
 
 // String is for Dump() and debugging.
-func (me *Entry) String() string {
+func (me *entry) String() string {
 	var text strings.Builder
 	text.WriteString(fmt.Sprintf("%s ", me.Flag))
-	if me.Flag == Raw && strings.HasPrefix(
+	if me.Flag == rawFlag && strings.HasPrefix(
 		http.DetectContentType(me.Blob), "text") {
 		text.WriteByte('"')
 		text.WriteString(gong.ElideMiddle(string(me.Blob), 32))

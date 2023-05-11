@@ -46,12 +46,12 @@ func (me StateVal) marshal() []byte {
 
 func unmarshalStateVal(raw []byte) StateVal {
 	var stateVal StateVal
-	index := SidSize
+	index := sidSize
 	stateVal.Sid = unmarshalSid(raw[:index])
 	stateVal.Monitored = raw[index] == 'M'
 	index++
 	stateVal.Renamed = raw[index] == 'r'
-	if len(raw) > SidSize {
+	if len(raw) > sidSize {
 		index++
 		stateVal.MimeType = string(raw[index:])
 	}

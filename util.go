@@ -17,7 +17,7 @@ import (
 	"github.com/mark-summerfield/gong"
 )
 
-func getRaws(filename string, sha *SHA256) ([]byte, []byte, []byte, error) {
+func getRaws(filename string, sha *shA256) ([]byte, []byte, []byte, error) {
 	raw, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, nil, nil, err
@@ -35,8 +35,8 @@ func getRaws(filename string, sha *SHA256) ([]byte, []byte, []byte, error) {
 	return raw, rawFlate.Bytes(), rawLzw.Bytes(), nil
 }
 
-func populateSha(raw []byte, sha *SHA256) {
-	*sha = SHA256(sha256.Sum256(raw))
+func populateSha(raw []byte, sha *shA256) {
+	*sha = shA256(sha256.Sum256(raw))
 }
 
 func populateFlate(raw []byte, rawFlate *bytes.Buffer) {
