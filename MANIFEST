@@ -59,7 +59,14 @@ st.sh
 
 # NOTE Renaming
 
-    Rename algorithm
+    Rename algorithm new
+
+    - unmonitor oldFilename and remember sid
+    - monitored newFilename
+    - add "renamed" key next rid, value newFilename, oldFilename,
+      oldSid = remembered sid
+
+    Rename algorithm old
 
     - create "states" key newFilename with oldFilename's value,
       set its renamed to true,
