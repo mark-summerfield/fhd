@@ -242,14 +242,19 @@ func Test_tdata(t *testing.T) {
 		dir = gong.AbsPath(".")
 	}
 	defer func() { _ = os.Chdir(dir) }()
-	_ = os.Chdir("tdata/1")
-	filename := "tdata.fhd"
-	fhd, err := New(filename)
-	defer func() { _ = fhd.Close() }()
-	defer func() { os.Remove(filename) }()
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
 	} else {
+		filename := "tdata.fhd"
+		err = os.Chdir("tdata/1")
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		fhd, _ := New(filename)
+		defer func() {
+			_ = os.Chdir(dir)
+			os.Remove("tdata/1/" + filename)
+		}()
 		states, err := fhd.States()
 		if err != nil {
 			t.Errorf("unexpected error: %s", err)
@@ -299,9 +304,29 @@ func Test_tdata(t *testing.T) {
 		if normalized(actual) != normalized(expected1) {
 			t.Error("DumpTo doesn't match expected1")
 		}
+		err = fhd.Close()
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if err = copyFile("../2/"+filename, filename); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		err = os.Chdir("../2")
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		fhd, _ = New(filename)
+		defer func() {
+			_ = os.Chdir(dir)
+			os.Remove("tdata/2/" + filename)
+		}()
+		buffer.Reset()
+		save, err := fhd.Save("second save")
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		fmt.Println(save)
 		// TODO
-		// cp tdata.fhd ../2
-		// cd ../2
 		// do work e.g., save & extract to check tdata.fhd
 		// cp tdata.fhd ../3
 		// cd ../3
@@ -309,7 +334,10 @@ func Test_tdata(t *testing.T) {
 		// cp tdata.fhd ../4
 		// cd ../4
 		// do work e.g., save & extract to check tdata.fhd
-		_ = os.Chdir("tdata/1")
+		err = os.Chdir("../1")
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
 		buffer.Reset()
 		for _, state := range states {
 			err = fhd.ExtractForSid(1, state.Filename, &buffer)

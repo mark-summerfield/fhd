@@ -10,6 +10,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sync"
@@ -84,4 +85,19 @@ func getExtractFilename(sid SID, filename string) string {
 		sep += "#"
 	}
 	return extracted
+}
+
+func copyFile(dest, source string) error {
+	src, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+	dst, err := os.OpenFile(dest, os.O_RDWR|os.O_CREATE, gong.ModeUserRW)
+	if err != nil {
+		return err
+	}
+	defer dst.Close()
+	_, err = io.Copy(dst, src)
+	return err
 }
