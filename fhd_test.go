@@ -198,15 +198,14 @@ func Test_tdata(t *testing.T) {
 		if normalized(actual) != normalized(expected1) {
 			t.Error("DumpTo doesn't match expected1")
 		}
+
 		err = fhd.Close()
 		if err != nil {
 			t.Errorf("unexpected error: %s", err)
 		}
-
 		if err = copyFile("../2/"+filename, filename); err != nil {
 			t.Errorf("unexpected error: %s", err)
 		}
-
 		err = os.Chdir("../2")
 		if err != nil {
 			t.Errorf("unexpected error: %s", err)
@@ -235,14 +234,115 @@ func Test_tdata(t *testing.T) {
 		if fhd.SaveCount() != 3 {
 			t.Errorf("expected 3 saved files, got %d", fhd.SaveCount())
 		}
-		// TODO
-		// do work e.g., save & extract to check tdata.fhd
-		// cp tdata.fhd ../3
-		// cd ../3
-		// do work e.g., save & extract to check tdata.fhd
-		// cp tdata.fhd ../4
-		// cd ../4
-		// do work e.g., save & extract to check tdata.fhd
+		buffer.Reset()
+		for _, state := range states {
+			err = fhd.ExtractForSid(state.Sid, state.Filename, &buffer)
+			if err != nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			raw := buffer.Bytes()
+			if !compareFileWithRaw(state.Filename, raw) {
+				t.Errorf("expected equal for %s", state.Filename)
+			}
+			buffer.Reset()
+		}
+
+		err = fhd.Close()
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if err = copyFile("../3/"+filename, filename); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		err = os.Chdir("../3")
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		fhd, _ = New(filename)
+		buffer.Reset()
+		expected = "the third save"
+		saveItem, err = fhd.Save(expected)
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if saveItem.Sid != 3 {
+			t.Errorf("expected SID of 3, got %d", saveItem.Sid)
+		}
+		if saveItem.Comment != expected {
+			t.Errorf("expected Comment of %q, got %q", expected,
+				saveItem.Comment)
+		}
+		states, err = fhd.States()
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if len(states) != 4 {
+			t.Errorf("expected 4 states, got %d", len(states))
+		}
+		if fhd.SaveCount() != 3 {
+			t.Errorf("expected 3 saved files, got %d", fhd.SaveCount())
+		}
+		buffer.Reset()
+		for _, state := range states {
+			err = fhd.ExtractForSid(state.Sid, state.Filename, &buffer)
+			if err != nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			raw := buffer.Bytes()
+			if !compareFileWithRaw(state.Filename, raw) {
+				t.Errorf("expected equal for %s", state.Filename)
+			}
+			buffer.Reset()
+		}
+
+		err = fhd.Close()
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if err = copyFile("../4/"+filename, filename); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		err = os.Chdir("../4")
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		fhd, _ = New(filename)
+		buffer.Reset()
+		expected = "and the fourth save"
+		saveItem, err = fhd.Save(expected)
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if saveItem.Sid != 4 {
+			t.Errorf("expected SID of 4, got %d", saveItem.Sid)
+		}
+		if saveItem.Comment != expected {
+			t.Errorf("expected Comment of %q, got %q", expected,
+				saveItem.Comment)
+		}
+		states, err = fhd.States()
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if len(states) != 4 {
+			t.Errorf("expected 4 states, got %d", len(states))
+		}
+		if fhd.SaveCount() != 4 {
+			t.Errorf("expected 4 saved files, got %d", fhd.SaveCount())
+		}
+		buffer.Reset()
+		for _, state := range states {
+			err = fhd.ExtractForSid(state.Sid, state.Filename, &buffer)
+			if err != nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+			raw := buffer.Bytes()
+			if !compareFileWithRaw(state.Filename, raw) {
+				t.Errorf("expected equal for %s", state.Filename)
+			}
+			buffer.Reset()
+		}
+
 		err = os.Chdir("../1")
 		if err != nil {
 			t.Errorf("unexpected error: %s", err)
