@@ -9,25 +9,25 @@ import (
 	"time"
 )
 
-type SaveInfo struct {
+type SaveItem struct {
 	Sid     SID
 	When    time.Time
 	Comment string
 }
 
-func newSaveInfo(sid SID, when time.Time, comment string) SaveInfo {
-	return SaveInfo{Sid: sid, When: when, Comment: comment}
+func newSaveItem(sid SID, when time.Time, comment string) SaveItem {
+	return SaveItem{Sid: sid, When: when, Comment: comment}
 }
 
-func newInvalidSaveInfo() SaveInfo {
-	return SaveInfo{Sid: InvalidSID}
+func newInvalidSaveItem() SaveItem {
+	return SaveItem{Sid: InvalidSID}
 }
 
-func (me *SaveInfo) IsValid() bool {
+func (me *SaveItem) IsValid() bool {
 	return me.Sid.IsValid()
 }
 
-func (me *SaveInfo) String() string {
+func (me *SaveItem) String() string {
 	return fmt.Sprintf("%d@%s%q", me.Sid,
 		strings.ReplaceAll(me.When.Format(time.DateTime), " ", "T"),
 		me.Comment)

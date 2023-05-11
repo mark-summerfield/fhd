@@ -31,6 +31,7 @@ func (me *Fhd) DumpTo(writer io.Writer) error {
 	return me.db.View(func(tx *bolt.Tx) error {
 		dumpConfig(tx, write, writeRaw)
 		dumpStates(tx, write, writeRaw)
+		dumpRenamed(tx, write, writeRaw)
 		return dumpSaves(tx, write, writeRaw)
 	})
 }
@@ -72,16 +73,32 @@ func dumpStates(tx *bolt.Tx, write WriteStr, writeRaw WriteRaw) {
 	} else {
 		write("states:\n")
 		cursor := states.Cursor()
-		rawFilename, rawStateInfo := cursor.First()
-		for ; rawFilename != nil; rawFilename,
-			rawStateInfo = cursor.Next() {
+		rawFilename, rawStateVal := cursor.First()
+		for ; rawFilename != nil; rawFilename, rawStateVal = cursor.Next() {
 			write("  ")
 			writeRaw(rawFilename)
-			stateInfo := UnmarshalStateInfo(rawStateInfo)
-			write(" " + stateInfo.String())
+			stateVal := UnmarshalStateVal(rawStateVal)
+			write(" " + stateVal.String())
 			write("\n")
 		}
 
+	}
+}
+
+func dumpRenamed(tx *bolt.Tx, write WriteStr, writeRaw WriteRaw) {
+	renamed := tx.Bucket(renamedBucket)
+	if renamed == nil {
+		write("error: missing renamed\n")
+	} else {
+		write("renamed:\n")
+		cursor := renamed.Cursor()
+		rid, rawRenameVal := cursor.Last()
+		for ; rid != nil; rid, rawRenameVal = cursor.Prev() {
+			write("  ")
+			write(fmt.Sprintf("%d: %s", rid,
+				UnmarshalRenameVal(rawRenameVal)))
+			write("\n")
+		}
 	}
 }
 

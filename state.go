@@ -5,58 +5,72 @@ package fhd
 
 import "fmt"
 
-type StateInfo struct {
-	Monitored bool
+type StateVal struct {
 	Sid       SID // Most recent SID the corresponding file was saved into
+	Monitored bool
+	Renamed   bool
 	MimeType  string
 }
 
-func newStateInfo(monitored bool, sid SID, mimeType string) StateInfo {
-	return StateInfo{Monitored: monitored, Sid: sid, MimeType: mimeType}
+func newStateVal(sid SID, monitored bool, mimeType string) StateVal {
+	return StateVal{Sid: sid, Monitored: monitored, MimeType: mimeType}
 }
 
-func (me StateInfo) String() string {
+func (me StateVal) String() string {
 	monitored := "M"
 	if !me.Monitored {
 		monitored = "U"
 	}
-	return fmt.Sprintf("%s#%d:%s", monitored, me.Sid, me.MimeType)
+	renamed := "r"
+	if !me.Renamed {
+		renamed = " "
+	}
+	return fmt.Sprintf("%s%s#%d:%s", monitored, renamed, me.Sid, me.MimeType)
 }
 
-func (me StateInfo) Marshal() []byte {
-	raw := make([]byte, 0, 9)
+func (me StateVal) Marshal() []byte {
+	raw := make([]byte, 0, 10)
 	raw = append(raw, me.Sid.Marshal()...)
 	var monitored byte = 'M'
 	if !me.Monitored {
 		monitored = 'U'
 	}
 	raw = append(raw, monitored)
+	var renamed byte = 'r'
+	if !me.Renamed {
+		renamed = ' '
+	}
+	raw = append(raw, renamed)
 	return append(raw, []byte(me.MimeType)...)
 }
 
-func UnmarshalStateInfo(raw []byte) StateInfo {
-	var stateInfo StateInfo
-	stateInfo.Monitored = raw[SidSize] == 'M'
-	stateInfo.Sid = UnmarshalSid(raw[:SidSize])
+func UnmarshalStateVal(raw []byte) StateVal {
+	var stateVal StateVal
+	index := SidSize
+	stateVal.Sid = UnmarshalSid(raw[:index])
+	stateVal.Monitored = raw[index] == 'M'
+	index++
+	stateVal.Renamed = raw[index] == 'r'
 	if len(raw) > SidSize {
-		stateInfo.MimeType = string(raw[SidSize+1:])
+		index++
+		stateVal.MimeType = string(raw[index:])
 	}
-	return stateInfo
+	return stateVal
 }
 
-type StateData struct {
+type StateItem struct {
 	Filename string
-	StateInfo
+	StateVal
 }
 
-func newState(filename string, stateInfo StateInfo) *StateData {
-	return &StateData{Filename: filename, StateInfo: stateInfo}
+func newState(filename string, stateVal StateVal) *StateItem {
+	return &StateItem{Filename: filename, StateVal: stateVal}
 }
 
-func newStateFromRaw(rawFilename []byte, rawStateInfo []byte) *StateData {
-	return newState(string(rawFilename), UnmarshalStateInfo(rawStateInfo))
+func newStateFromRaw(rawFilename []byte, rawStateVal []byte) *StateItem {
+	return newState(string(rawFilename), UnmarshalStateVal(rawStateVal))
 }
 
-func (me StateData) String() string {
-	return fmt.Sprintf("%q%s", me.Filename, me.StateInfo)
+func (me StateItem) String() string {
+	return fmt.Sprintf("%q%s", me.Filename, me.StateVal)
 }

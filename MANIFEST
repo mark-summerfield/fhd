@@ -1,5 +1,5 @@
 # TODO tests
-# TODO implement Rename() once I figure out how!
+# TODO implement Rename() see notes at the end
 # TODO implement Compact()
 # TODO implement Delete()
 # TODO implement Purge()
@@ -10,8 +10,9 @@ fhdx.go
 dump.go
 entry.go
 state.go
+rename.go
 flag.go
-saveinfo.go
+saveitem.go
 sid.go
 marshal.go
 util.go
@@ -24,21 +25,29 @@ go.mod
 README.md
 
 st.sh
-
-# NOTE
+# NOTE Key-Value Database Structure
 
     "config" bucket
 	key string # e.g., key="format" value=1
 	value any  # e.g., key="ignore" value=bucket key=filename value=ε
 
-    "states" bucket
+    "states" bucket of StateItem (key + StatVal)
 	key filename string
-	value StateInfo {
+	value StateVal {
 	    monitored bool
+	    renamed bool
 	    sid int # the most recent sid this file was saved into
 	    mimetype string # so clients can see if they can offer diffs
 	}
 	# if renamed only keep newname here
+
+    "renamed" bucket of RenameItem (key + RenameVal)
+	key rid int # unique generated ID
+	value RenameVal {
+	    newFilename string
+	    oldFilename string
+	    oldSid int
+	}
 
     "saves" bucket
 	key sid int # > 0
@@ -48,5 +57,25 @@ st.sh
 	    # then > 0 of:
 	    key filename string
 	    value Entry
+
+# NOTE Renaming
+
+    Rename algorithm
+
+    - create "states" key newFilename with oldFilename's value,
+      set its renamed to true,
+      remember its sid
+    - delete "states" key oldFilename
+    - add "renamed" key next rid, value newFilename, oldFilename,
+      oldSid = remembered sid
+
+    Search algorithm
+
+    - get state for filename
+    - if state renamed = false, can trace history by sid→filename in "saves"
+    - else
+        iterated "renamed" to find filename = newFilename
+	can trace history by sid→filename in "saves" back until oldSid;
+	then trace by oldSid→oldFilename
 
 # vim: syn=yaml

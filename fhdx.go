@@ -34,7 +34,22 @@ func newDb(filename string) (*bolt.DB, error) {
 			return fmt.Errorf("failed to create bucket %q: %s", savesBucket,
 				err)
 		}
-		return saves.SetSequence(0) // next i.e., first used, will be 1.
+		err = saves.SetSequence(0) // next i.e., first used, will be 1.
+		if err != nil {
+			return fmt.Errorf("failed to initialize IDs for %q: %s",
+				savesBucket, err)
+		}
+		renamed, err := tx.CreateBucketIfNotExists(renamedBucket)
+		if err != nil {
+			return fmt.Errorf("failed to create bucket %q: %s",
+				renamedBucket, err)
+		}
+		err = renamed.SetSequence(0) // next i.e., first used, will be 1.
+		if err != nil {
+			return fmt.Errorf("failed to initialize IDs for %q: %s",
+				renamedBucket, err)
+		}
+		return nil
 	})
 	if err != nil {
 		closeErr := db.Close()
@@ -82,16 +97,16 @@ func (me *Fhd) monitor(filenames ...string) error {
 		var err error
 		for _, filename := range filenames {
 			rawFilename := []byte(me.relativePath(filename))
-			var stateInfo StateInfo
-			rawOldStateInfo := states.Get(rawFilename)
-			if rawOldStateInfo != nil {
-				stateInfo = UnmarshalStateInfo(rawOldStateInfo)
-				stateInfo.Monitored = true
+			var stateVal StateVal
+			rawOldStateVal := states.Get(rawFilename)
+			if rawOldStateVal != nil {
+				stateVal = UnmarshalStateVal(rawOldStateVal)
+				stateVal.Monitored = true
 			} else {
-				stateInfo = newStateInfo(true, InvalidSID, "")
+				stateVal = newStateVal(InvalidSID, true, "")
 			}
 			if ierr := states.Put(rawFilename,
-				stateInfo.Marshal()); ierr != nil {
+				stateVal.Marshal()); ierr != nil {
 				err = errors.Join(err, ierr)
 			}
 		}
@@ -99,21 +114,21 @@ func (me *Fhd) monitor(filenames ...string) error {
 	})
 }
 
-func (me *Fhd) monitored(monitored bool) ([]*StateData, error) {
-	stateData := make([]*StateData, 0)
+func (me *Fhd) monitored(monitored bool) ([]*StateItem, error) {
+	stateItem := make([]*StateItem, 0)
 	err := me.db.View(func(tx *bolt.Tx) error {
 		states := tx.Bucket(statesBucket)
 		if states == nil {
 			return fmt.Errorf("failed to find %q", statesBucket)
 		}
 		cursor := states.Cursor()
-		rawFilename, rawStateInfo := cursor.First()
+		rawFilename, rawStateVal := cursor.First()
 		for ; rawFilename != nil; rawFilename,
-			rawStateInfo = cursor.Next() {
-			stateInfo := UnmarshalStateInfo(rawStateInfo)
-			if stateInfo.Monitored == monitored {
-				stateData = append(stateData, newState(string(rawFilename),
-					stateInfo))
+			rawStateVal = cursor.Next() {
+			stateVal := UnmarshalStateVal(rawStateVal)
+			if stateVal.Monitored == monitored {
+				stateItem = append(stateItem, newState(string(rawFilename),
+					stateVal))
 			}
 		}
 		return nil
@@ -121,19 +136,19 @@ func (me *Fhd) monitored(monitored bool) ([]*StateData, error) {
 	if err != nil {
 		return nil, err
 	}
-	return stateData, nil
+	return stateItem, nil
 }
 
 func (me *Fhd) unmonitor(states, ignores *bolt.Bucket,
 	filename string) error {
 	rawFilename := []byte(me.relativePath(filename))
-	rawOldStateInfo := states.Get(rawFilename)
-	if rawOldStateInfo == nil { // Not Monitored so add to ignores
+	rawOldStateVal := states.Get(rawFilename)
+	if rawOldStateVal == nil { // Not Monitored so add to ignores
 		return ignores.Put(rawFilename, emptyValue)
 	} else {
-		stateInfo := UnmarshalStateInfo(rawOldStateInfo)
-		stateInfo.Monitored = false
-		return states.Put(rawFilename, stateInfo.Marshal())
+		stateVal := UnmarshalStateVal(rawOldStateVal)
+		stateVal.Monitored = false
+		return states.Put(rawFilename, stateVal.Marshal())
 	}
 }
 
@@ -145,16 +160,16 @@ func (me *Fhd) getIgnores(tx *bolt.Tx) *bolt.Bucket {
 	return config.Bucket(configIgnore)
 }
 
-func (me *Fhd) newSid(tx *bolt.Tx, comment string) (SaveInfo, error) {
+func (me *Fhd) newSid(tx *bolt.Tx, comment string) (SaveItem, error) {
 	var sid SID
 	saves := tx.Bucket(savesBucket)
 	if saves == nil {
-		return newInvalidSaveInfo(), fmt.Errorf("failed to find %q",
+		return newInvalidSaveItem(), fmt.Errorf("failed to find %q",
 			savesBucket)
 	}
 	u, _ := saves.NextSequence()
 	sid = SID(u)
-	return newSaveInfo(sid, time.Now(), comment), nil
+	return newSaveItem(sid, time.Now(), comment), nil
 }
 
 // If the new file's SHA256 != prev SHA256 (or there is no prev) we save the
@@ -188,19 +203,19 @@ func (me *Fhd) maybeSaveOne(tx *bolt.Tx, saves, save *bolt.Bucket, sid SID,
 	if states == nil {
 		return true, errors.New("missing states")
 	}
-	stateInfo := newStateInfo(true, sid, http.DetectContentType(raw))
-	return true, states.Put(rawFilename, stateInfo.Marshal())
+	stateVal := newStateVal(sid, true, http.DetectContentType(raw))
+	return true, states.Put(rawFilename, stateVal.Marshal())
 }
 
-func (me *Fhd) saveMetadata(save *bolt.Bucket, saveInfo *SaveInfo) error {
-	rawWhen, err := saveInfo.When.MarshalBinary()
+func (me *Fhd) saveMetadata(save *bolt.Bucket, saveItem *SaveItem) error {
+	rawWhen, err := saveItem.When.MarshalBinary()
 	if err != nil {
 		return err
 	}
 	if err = save.Put(saveWhen, rawWhen); err != nil {
 		return err
 	}
-	if err = save.Put(saveComment, []byte(saveInfo.Comment)); err != nil {
+	if err = save.Put(saveComment, []byte(saveItem.Comment)); err != nil {
 		return err
 	}
 	return nil

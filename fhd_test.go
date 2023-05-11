@@ -219,17 +219,17 @@ func Test2(t *testing.T) {
 		if err != nil {
 			t.Errorf("unexpected error: %s", err)
 		}
-		saveInfo, err := fhd.MonitorWithComment("start", file1, file2)
+		saveItem, err := fhd.MonitorWithComment("start", file1, file2)
 		if err != nil {
 			t.Errorf("unexpected error: %s", err)
 		}
-		if saveInfo.Sid != 1 {
-			t.Errorf("expected SID of 1, got %d", saveInfo.Sid)
+		if saveItem.Sid != 1 {
+			t.Errorf("expected SID of 1, got %d", saveItem.Sid)
 		}
 		expected := "start"
-		if saveInfo.Comment != expected {
+		if saveItem.Comment != expected {
 			t.Errorf("expected Comment of %q, got %q", expected,
-				saveInfo.Comment)
+				saveItem.Comment)
 		}
 	}
 }
@@ -258,16 +258,16 @@ func Test_tdata(t *testing.T) {
 		files := []string{"battery.png", "computer.bmp", "ring.py",
 			"wordsearch.pyw"}
 		expected := "started"
-		saveInfo, err := fhd.MonitorWithComment(expected, files...)
+		saveItem, err := fhd.MonitorWithComment(expected, files...)
 		if err != nil {
 			t.Errorf("unexpected error: %s", err)
 		}
-		if saveInfo.Sid != 1 {
-			t.Errorf("expected SID of 1, got %d", saveInfo.Sid)
+		if saveItem.Sid != 1 {
+			t.Errorf("expected SID of 1, got %d", saveItem.Sid)
 		}
-		if saveInfo.Comment != expected {
+		if saveItem.Comment != expected {
 			t.Errorf("expected Comment of %q, got %q", expected,
-				saveInfo.Comment)
+				saveItem.Comment)
 		}
 		states, err = fhd.States()
 		if err != nil {

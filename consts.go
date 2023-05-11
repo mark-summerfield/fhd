@@ -11,9 +11,10 @@ var (
 
 	fileFormat byte = 1
 
-	configBucket = []byte("config")
-	statesBucket = []byte("states")
-	savesBucket  = []byte("saves")
+	configBucket  = []byte("config")
+	statesBucket  = []byte("states")
+	savesBucket   = []byte("saves")
+	renamedBucket = []byte("renamed")
 
 	configFormat = []byte("format")
 	configIgnore = []byte("ignore")
@@ -30,4 +31,6 @@ var (
 		"*.lix", "*.o", "*.obj", "*.py[co]", "*.rs.bk", "*.so", "*.sw[nop]",
 		"*.swp", "*.tmp", "*~", "gpl-[0-9].[0-9].txt", "louti[0-9]*",
 		"moc_*.cpp", "qrc_*.cpp", "ui_*.h"}
+
+	uint16size = 2
 )

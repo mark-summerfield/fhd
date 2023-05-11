@@ -64,43 +64,43 @@ func (me *Fhd) FileFormat() (int, error) {
 
 // States returns the monitoring state of every monitored and unmonitored
 // file and the SID of the last save it was saved into.
-func (me *Fhd) States() ([]*StateData, error) {
-	stateData := make([]*StateData, 0)
+func (me *Fhd) States() ([]*StateItem, error) {
+	stateItem := make([]*StateItem, 0)
 	err := me.db.View(func(tx *bolt.Tx) error {
 		states := tx.Bucket(statesBucket)
 		if states == nil {
 			return fmt.Errorf("failed to find %q", statesBucket)
 		}
 		cursor := states.Cursor()
-		rawFilename, rawStateInfo := cursor.First()
+		rawFilename, rawStateVal := cursor.First()
 		for ; rawFilename != nil; rawFilename,
-			rawStateInfo = cursor.Next() {
-			stateData = append(stateData, newStateFromRaw(rawFilename,
-				rawStateInfo))
+			rawStateVal = cursor.Next() {
+			stateItem = append(stateItem, newStateFromRaw(rawFilename,
+				rawStateVal))
 		}
 		return nil
 	})
-	return stateData, err
+	return stateItem, err
 }
 
 // Monitored returns the list of every monitored file.
-func (me *Fhd) Monitored() ([]*StateData, error) {
+func (me *Fhd) Monitored() ([]*StateItem, error) {
 	return me.monitored(true)
 }
 
 // Monitor adds the given files to be monitored _and_ does an initial Save.
 // Returns the new Save ID (SID).
-func (me *Fhd) Monitor(filenames ...string) (SaveInfo, error) {
+func (me *Fhd) Monitor(filenames ...string) (SaveItem, error) {
 	return me.MonitorWithComment("", filenames...)
 }
 
 // MonitorWithComment adds the given files to be monitored _and_ does an
 // initial Save with the given comment. Returns the new Save ID (SID).
 func (me *Fhd) MonitorWithComment(comment string,
-	filenames ...string) (SaveInfo, error) {
+	filenames ...string) (SaveItem, error) {
 	err := me.monitor(filenames...)
 	if err != nil {
-		return newInvalidSaveInfo(), err
+		return newInvalidSaveItem(), err
 	}
 	return me.Save(comment)
 }
@@ -108,7 +108,7 @@ func (me *Fhd) MonitorWithComment(comment string,
 // Unmonitored returns the list of every unmonitored file.
 // These are files that have been monitored in the past but have been set to
 // be unmonitored.
-func (me *Fhd) Unmonitored() ([]*StateData, error) {
+func (me *Fhd) Unmonitored() ([]*StateItem, error) {
 	return me.monitored(false)
 }
 
@@ -186,22 +186,22 @@ func (me *Fhd) Unignore(filenames ...string) error {
 }
 
 // Save saves a snapshot of every monitored file that's changed and returns
-// the corresponding SaveInfo with the new save ID (SID). If no files were
-// changed and therefore none were saved, SaveInfo is invalid and err is
+// the corresponding SaveItem with the new save ID (SID). If no files were
+// changed and therefore none were saved, SaveItem is invalid and err is
 // nil.
-func (me *Fhd) Save(comment string) (SaveInfo, error) {
+func (me *Fhd) Save(comment string) (SaveItem, error) {
 	monitored, err := me.Monitored()
 	if err != nil {
-		return newInvalidSaveInfo(), err
+		return newInvalidSaveItem(), err
 	}
-	var saveInfo SaveInfo
+	var saveItem SaveItem
 	err = me.db.Update(func(tx *bolt.Tx) error {
 		var err error
-		saveInfo, err = me.newSid(tx, comment)
+		saveItem, err = me.newSid(tx, comment)
 		if err != nil {
-			return err // saveInfo is invalid on err
+			return err // saveItem is invalid on err
 		}
-		sid := saveInfo.Sid
+		sid := saveItem.Sid
 		saves := tx.Bucket(savesBucket)
 		if saves == nil {
 			return errors.New("missing saves")
@@ -211,9 +211,9 @@ func (me *Fhd) Save(comment string) (SaveInfo, error) {
 			return fmt.Errorf("failed to save metadata for #%d", sid)
 		}
 		count := 0
-		for _, stateData := range monitored {
+		for _, stateItem := range monitored {
 			saved, ierr := me.maybeSaveOne(tx, saves, save, sid,
-				stateData.Filename, stateData.Sid)
+				stateItem.Filename, stateItem.Sid)
 			if ierr != nil {
 				err = errors.Join(err, ierr)
 			}
@@ -225,17 +225,17 @@ func (me *Fhd) Save(comment string) (SaveInfo, error) {
 			return err
 		}
 		if count > 0 {
-			return me.saveMetadata(save, &saveInfo)
+			return me.saveMetadata(save, &saveItem)
 		}
 		return nil
 	})
-	return saveInfo, err
+	return saveItem, err
 }
 
-// SaveInfo returns the SaveInfo for the given SID or an invalid SaveInfo on
-// error.
-func (me *Fhd) SaveInfo(sid SID) SaveInfo {
-	var saveInfo SaveInfo
+// SaveItemForSid returns the SaveItem for the given SID or an invalid
+// SaveItem on error.
+func (me *Fhd) SaveItemForSid(sid SID) SaveItem {
+	var saveItem SaveItem
 	err := me.db.View(func(tx *bolt.Tx) error {
 		saves := tx.Bucket(savesBucket)
 		if saves == nil {
@@ -253,14 +253,14 @@ func (me *Fhd) SaveInfo(sid SID) SaveInfo {
 			if rawComment != nil {
 				comment = string(rawComment)
 			}
-			saveInfo = newSaveInfo(sid, when, comment)
+			saveItem = newSaveItem(sid, when, comment)
 		}
 		return nil
 	})
 	if err != nil {
-		return newInvalidSaveInfo()
+		return newInvalidSaveItem()
 	}
-	return saveInfo
+	return saveItem
 }
 
 // Len returns the number of saved files in the most recent save.
@@ -320,22 +320,22 @@ func (me *Fhd) Sids() ([]SID, error) {
 	return sids, err
 }
 
-// Returns the most recent StateInfo for the given filename.
-func (me *Fhd) StateForFilename(filename string) (StateInfo, error) {
+// Returns the most recent StateVal for the given filename.
+func (me *Fhd) StateForFilename(filename string) (StateVal, error) {
 	rawFilename := []byte(me.relativePath(filename))
-	var stateInfo StateInfo
+	var stateVal StateVal
 	err := me.db.View(func(tx *bolt.Tx) error {
 		states := tx.Bucket(statesBucket)
 		if states == nil {
 			return fmt.Errorf("failed to find %q", statesBucket)
 		}
-		rawStateInfo := states.Get(rawFilename)
-		if rawStateInfo != nil {
-			stateInfo = UnmarshalStateInfo(rawStateInfo)
+		rawStateVal := states.Get(rawFilename)
+		if rawStateVal != nil {
+			stateVal = UnmarshalStateVal(rawStateVal)
 		}
 		return nil
 	})
-	return stateInfo, err
+	return stateVal, err
 }
 
 // Returns all the SIDs for the given filename from most- to least-recent.
@@ -363,11 +363,11 @@ func (me *Fhd) SidsForFilename(filename string) ([]SID, error) {
 // new filename, filename#SID.ext, and returns the new filename.
 func (me *Fhd) ExtractFile(filename string) (string, error) {
 	filename = me.relativePath(filename)
-	stateInfo, err := me.StateForFilename(filename)
+	stateVal, err := me.StateForFilename(filename)
 	if err != nil {
 		return "", err
 	}
-	return me.ExtractFileForSid(stateInfo.Sid, filename)
+	return me.ExtractFileForSid(stateVal.Sid, filename)
 }
 
 // Writes the content of the given filename from the specified Save
@@ -389,11 +389,11 @@ func (me *Fhd) ExtractFileForSid(sid SID, filename string) (string, error) {
 // to the given writer.
 func (me *Fhd) Extract(filename string, writer io.Writer) error {
 	filename = me.relativePath(filename)
-	stateInfo, err := me.StateForFilename(filename)
+	stateVal, err := me.StateForFilename(filename)
 	if err != nil {
 		return err
 	}
-	return me.ExtractForSid(stateInfo.Sid, filename, writer)
+	return me.ExtractForSid(stateVal.Sid, filename, writer)
 }
 
 // Writes the content of the given filename from the specified Save
