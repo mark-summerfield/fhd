@@ -100,13 +100,13 @@ func (me *Fhd) monitor(filenames ...string) error {
 			var stateVal StateVal
 			rawOldStateVal := states.Get(rawFilename)
 			if rawOldStateVal != nil {
-				stateVal = UnmarshalStateVal(rawOldStateVal)
+				stateVal = unmarshalStateVal(rawOldStateVal)
 				stateVal.Monitored = true
 			} else {
 				stateVal = newStateVal(InvalidSID, true, "")
 			}
 			if ierr := states.Put(rawFilename,
-				stateVal.Marshal()); ierr != nil {
+				stateVal.marshal()); ierr != nil {
 				err = errors.Join(err, ierr)
 			}
 		}
@@ -125,7 +125,7 @@ func (me *Fhd) monitored(monitored bool) ([]*StateItem, error) {
 		rawFilename, rawStateVal := cursor.First()
 		for ; rawFilename != nil; rawFilename,
 			rawStateVal = cursor.Next() {
-			stateVal := UnmarshalStateVal(rawStateVal)
+			stateVal := unmarshalStateVal(rawStateVal)
 			if stateVal.Monitored == monitored {
 				stateItem = append(stateItem, newState(string(rawFilename),
 					stateVal))
@@ -146,9 +146,9 @@ func (me *Fhd) unmonitor(states, ignores *bolt.Bucket,
 	if rawOldStateVal == nil { // Not Monitored so add to ignores
 		return ignores.Put(rawFilename, emptyValue)
 	} else {
-		stateVal := UnmarshalStateVal(rawOldStateVal)
+		stateVal := unmarshalStateVal(rawOldStateVal)
 		stateVal.Monitored = false
-		return states.Put(rawFilename, stateVal.Marshal())
+		return states.Put(rawFilename, stateVal.marshal())
 	}
 }
 
@@ -196,7 +196,7 @@ func (me *Fhd) maybeSaveOne(tx *bolt.Tx, saves, save *bolt.Bucket, sid SID,
 		entry.Blob = rawLzw
 	}
 	rawFilename := []byte(filename)
-	if err = save.Put(rawFilename, entry.Marshal()); err != nil {
+	if err = save.Put(rawFilename, entry.marshal()); err != nil {
 		return true, err
 	}
 	states := tx.Bucket(statesBucket)
@@ -204,7 +204,7 @@ func (me *Fhd) maybeSaveOne(tx *bolt.Tx, saves, save *bolt.Bucket, sid SID,
 		return true, errors.New("missing states")
 	}
 	stateVal := newStateVal(sid, true, http.DetectContentType(raw))
-	return true, states.Put(rawFilename, stateVal.Marshal())
+	return true, states.Put(rawFilename, stateVal.marshal())
 }
 
 func (me *Fhd) saveMetadata(save *bolt.Bucket, saveItem *SaveItem) error {
@@ -235,7 +235,7 @@ func (me *Fhd) sameAsPrev(saves *bolt.Bucket, newSid SID, filename string,
 
 func (me *Fhd) getEntry(saves *bolt.Bucket, filename string,
 	sid SID) *Entry {
-	save := saves.Bucket(sid.Marshal())
+	save := saves.Bucket(sid.marshal())
 	if save == nil {
 		return nil
 	}
@@ -243,7 +243,7 @@ func (me *Fhd) getEntry(saves *bolt.Bucket, filename string,
 	if rawEntry == nil {
 		return nil
 	}
-	return UnmarshalEntry(rawEntry)
+	return unmarshalEntry(rawEntry)
 }
 
 func (me *Fhd) relativePath(filename string) string {

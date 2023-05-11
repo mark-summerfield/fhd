@@ -17,13 +17,13 @@ type SID uint32 // allows for 4 billion saves
 
 func (me SID) IsValid() bool { return me != InvalidSID }
 
-func (me SID) Marshal() []byte {
+func (me SID) marshal() []byte {
 	raw := make([]byte, SidSize)
 	binary.BigEndian.PutUint32(raw, uint32(me))
 	return raw
 }
 
-func UnmarshalSid(raw []byte) SID {
+func unmarshalSid(raw []byte) SID {
 	var sid SID
 	buf := bytes.NewReader(raw)
 	if err := binary.Read(buf, binary.BigEndian, &sid); err != nil {

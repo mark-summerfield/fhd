@@ -113,7 +113,7 @@ func TestSidSequence(t *testing.T) {
 				t.Error(err)
 				return err
 			}
-			_, err = saves.CreateBucket(sidInfo.Sid.Marshal())
+			_, err = saves.CreateBucket(sidInfo.Sid.marshal())
 			if err != nil {
 				t.Error(err)
 				return err
@@ -123,7 +123,7 @@ func TestSidSequence(t *testing.T) {
 			if sid != 2 {
 				t.Errorf("expected sid of 2: %d", sid)
 			}
-			_, err = saves.CreateBucket((sidInfo.Sid + 1).Marshal())
+			_, err = saves.CreateBucket((sidInfo.Sid + 1).marshal())
 			if err != nil {
 				t.Error(err)
 				return err
@@ -133,7 +133,7 @@ func TestSidSequence(t *testing.T) {
 			if sid != 3 {
 				t.Errorf("expected sid of 3: %d", sid)
 			}
-			_, err = saves.CreateBucket((sidInfo.Sid + 2).Marshal())
+			_, err = saves.CreateBucket((sidInfo.Sid + 2).marshal())
 			if err != nil {
 				t.Error(err)
 				return err
@@ -153,7 +153,7 @@ func TestSidSequence(t *testing.T) {
 			if rawSid == nil {
 				t.Error("expected savesBucket sid 3, got nil")
 			}
-			sid := UnmarshalSid(rawSid)
+			sid := unmarshalSid(rawSid)
 			if sid != 3 {
 				t.Errorf("expected savesBucket expected 3 got %v", sid)
 			}
@@ -161,7 +161,7 @@ func TestSidSequence(t *testing.T) {
 			if rawSid == nil {
 				t.Error("expected savesBucket sid 2, got nil")
 			}
-			sid = UnmarshalSid(rawSid)
+			sid = unmarshalSid(rawSid)
 			if err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -172,7 +172,7 @@ func TestSidSequence(t *testing.T) {
 			if rawSid == nil {
 				t.Error("expected savesBucket sid 1, got nil")
 			}
-			sid = UnmarshalSid(rawSid)
+			sid = unmarshalSid(rawSid)
 			if sid != 1 {
 				t.Errorf("expected savesBucket expected 1 got %v", sid)
 			}

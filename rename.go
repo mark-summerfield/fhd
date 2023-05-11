@@ -21,29 +21,29 @@ func (me RenameVal) String() string {
 		me.OldSid)
 }
 
-func (me RenameVal) Marshal() []byte {
+func (me RenameVal) marshal() []byte {
 	rawNewFilename := []byte(me.NewFilename) // max len 64K bytes
 	rawOldFilename := []byte(me.OldFilename) // max len 64K bytes
 	size := uint16size + len(rawNewFilename) + uint16size +
 		len(rawOldFilename) + SidSize
 	raw := make([]byte, 0, size)
-	raw = append(raw, MarshalUint16(uint16(len(rawNewFilename)))...)
+	raw = append(raw, marshalUint16(uint16(len(rawNewFilename)))...)
 	raw = append(raw, rawNewFilename...)
-	raw = append(raw, MarshalUint16(uint16(len(rawOldFilename)))...)
+	raw = append(raw, marshalUint16(uint16(len(rawOldFilename)))...)
 	raw = append(raw, rawOldFilename...)
-	return append(raw, me.OldSid.Marshal()...)
+	return append(raw, me.OldSid.marshal()...)
 }
 
-func UnmarshalRenameVal(raw []byte) RenameVal {
+func unmarshalRenameVal(raw []byte) RenameVal {
 	var renameVal RenameVal
 	index := uint16size
-	size := int(UnmarshalUint16(raw[:index]))
+	size := int(unmarshalUint16(raw[:index]))
 	renameVal.NewFilename = string(raw[index : index+size])
 	index += size
-	size = int(UnmarshalUint16(raw[index : index+uint16size]))
+	size = int(unmarshalUint16(raw[index : index+uint16size]))
 	index += uint16size
 	renameVal.OldFilename = string(raw[index : index+size])
 	index += size
-	renameVal.OldSid = UnmarshalSid(raw[index : index+SidSize])
+	renameVal.OldSid = unmarshalSid(raw[index : index+SidSize])
 	return renameVal
 }

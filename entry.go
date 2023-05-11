@@ -25,12 +25,12 @@ func newEntry(sha SHA256, flag Flag) *Entry {
 	return &Entry{Sha: sha, Flag: flag}
 }
 
-func UnmarshalEntry(raw []byte) *Entry {
+func unmarshalEntry(raw []byte) *Entry {
 	return &Entry{Sha: SHA256(raw[:sha256.Size]),
 		Flag: Flag(raw[sha256.Size]), Blob: raw[sha256.Size+1:]}
 }
 
-func (me *Entry) Marshal() []byte {
+func (me *Entry) marshal() []byte {
 	raw := make([]byte, 0, sha256.Size+1+len(me.Blob))
 	raw = append(raw, me.Sha[:]...)
 	raw = append(raw, byte(me.Flag))

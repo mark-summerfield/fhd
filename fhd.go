@@ -206,7 +206,7 @@ func (me *Fhd) Save(comment string) (SaveItem, error) {
 		if saves == nil {
 			return errors.New("missing saves")
 		}
-		save, err := saves.CreateBucket(sid.Marshal())
+		save, err := saves.CreateBucket(sid.marshal())
 		if err != nil {
 			return fmt.Errorf("failed to save metadata for #%d", sid)
 		}
@@ -241,10 +241,10 @@ func (me *Fhd) SaveItemForSid(sid SID) SaveItem {
 		if saves == nil {
 			return fmt.Errorf("failed to find %q", savesBucket)
 		}
-		save := saves.Bucket(sid.Marshal())
+		save := saves.Bucket(sid.marshal())
 		if save != nil {
 			rawWhen := save.Get(saveWhen)
-			when, err := UnmarshalTime(rawWhen)
+			when, err := unmarshalTime(rawWhen)
 			if err != nil {
 				return err
 			}
@@ -277,7 +277,7 @@ func (me *Fhd) LenForSid(sid SID) int {
 	_ = me.db.View(func(tx *bolt.Tx) error {
 		saves := tx.Bucket(savesBucket)
 		if saves != nil {
-			save := saves.Bucket(sid.Marshal())
+			save := saves.Bucket(sid.marshal())
 			if save != nil {
 				count = save.Stats().KeyN - savePredefinedKeys
 			}
@@ -295,7 +295,7 @@ func (me *Fhd) Sid() SID {
 		if saves != nil {
 			cursor := saves.Cursor()
 			rawSid, _ := cursor.Last()
-			sid = UnmarshalSid(rawSid)
+			sid = unmarshalSid(rawSid)
 		}
 		return nil
 	})
@@ -313,7 +313,7 @@ func (me *Fhd) Sids() ([]SID, error) {
 		cursor := saves.Cursor()
 		rawSid, _ := cursor.Last()
 		for ; rawSid != nil; rawSid, _ = cursor.Prev() {
-			sids = append(sids, UnmarshalSid(rawSid))
+			sids = append(sids, unmarshalSid(rawSid))
 		}
 		return nil
 	})
@@ -331,7 +331,7 @@ func (me *Fhd) StateForFilename(filename string) (StateVal, error) {
 		}
 		rawStateVal := states.Get(rawFilename)
 		if rawStateVal != nil {
-			stateVal = UnmarshalStateVal(rawStateVal)
+			stateVal = unmarshalStateVal(rawStateVal)
 		}
 		return nil
 	})
@@ -351,7 +351,7 @@ func (me *Fhd) SidsForFilename(filename string) ([]SID, error) {
 		rawSid, _ := cursor.Last()
 		for ; rawSid != nil; rawSid, _ = cursor.Prev() {
 			if save := saves.Bucket(rawFilename); save != nil {
-				sids = append(sids, UnmarshalSid(rawSid))
+				sids = append(sids, unmarshalSid(rawSid))
 			}
 		}
 		return nil
@@ -406,7 +406,7 @@ func (me *Fhd) ExtractForSid(sid SID, filename string,
 		if saves == nil {
 			return fmt.Errorf("failed to find %q", savesBucket)
 		}
-		save := saves.Bucket(sid.Marshal())
+		save := saves.Bucket(sid.marshal())
 		if save == nil {
 			return fmt.Errorf("failed to find save %d", sid)
 		}
@@ -415,7 +415,7 @@ func (me *Fhd) ExtractForSid(sid SID, filename string,
 			return fmt.Errorf("failed to find file %s in save %d", filename,
 				sid)
 		}
-		entry := UnmarshalEntry(rawEntry)
+		entry := unmarshalEntry(rawEntry)
 		var err error
 		rawReader := bytes.NewReader(entry.Blob)
 		switch entry.Flag {

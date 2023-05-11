@@ -10,19 +10,19 @@ import (
 )
 
 // Marshal for Time is: time.Time.MarshalBinary()
-func UnmarshalTime(raw []byte) (time.Time, error) {
+func unmarshalTime(raw []byte) (time.Time, error) {
 	var t time.Time
 	err := t.UnmarshalBinary(raw)
 	return t, err
 }
 
-func MarshalUint16(u uint16) []byte {
+func marshalUint16(u uint16) []byte {
 	raw := make([]byte, uint16size)
 	binary.BigEndian.PutUint16(raw, u)
 	return raw
 }
 
-func UnmarshalUint16(raw []byte) uint16 {
+func unmarshalUint16(raw []byte) uint16 {
 	var u uint16
 	buf := bytes.NewReader(raw)
 	if err := binary.Read(buf, binary.BigEndian, &u); err != nil {

@@ -15,8 +15,8 @@ import (
 )
 
 type (
-	WriteStr func(string)
-	WriteRaw func([]byte)
+	writeStr func(string)
+	writeRaw func([]byte)
 )
 
 func (me *Fhd) Dump() error {
@@ -36,7 +36,7 @@ func (me *Fhd) DumpTo(writer io.Writer) error {
 	})
 }
 
-func dumpConfig(tx *bolt.Tx, write WriteStr, writeRaw WriteRaw) {
+func dumpConfig(tx *bolt.Tx, write writeStr, writeRaw writeRaw) {
 	config := tx.Bucket(configBucket)
 	if config == nil {
 		write("error: missing config\n")
@@ -66,7 +66,7 @@ func dumpConfig(tx *bolt.Tx, write WriteStr, writeRaw WriteRaw) {
 	}
 }
 
-func dumpStates(tx *bolt.Tx, write WriteStr, writeRaw WriteRaw) {
+func dumpStates(tx *bolt.Tx, write writeStr, writeRaw writeRaw) {
 	states := tx.Bucket(statesBucket)
 	if states == nil {
 		write("error: missing states\n")
@@ -77,7 +77,7 @@ func dumpStates(tx *bolt.Tx, write WriteStr, writeRaw WriteRaw) {
 		for ; rawFilename != nil; rawFilename, rawStateVal = cursor.Next() {
 			write("  ")
 			writeRaw(rawFilename)
-			stateVal := UnmarshalStateVal(rawStateVal)
+			stateVal := unmarshalStateVal(rawStateVal)
 			write(" " + stateVal.String())
 			write("\n")
 		}
@@ -85,7 +85,7 @@ func dumpStates(tx *bolt.Tx, write WriteStr, writeRaw WriteRaw) {
 	}
 }
 
-func dumpRenamed(tx *bolt.Tx, write WriteStr, writeRaw WriteRaw) {
+func dumpRenamed(tx *bolt.Tx, write writeStr, writeRaw writeRaw) {
 	renamed := tx.Bucket(renamedBucket)
 	if renamed == nil {
 		write("error: missing renamed\n")
@@ -96,13 +96,13 @@ func dumpRenamed(tx *bolt.Tx, write WriteStr, writeRaw WriteRaw) {
 		for ; rid != nil; rid, rawRenameVal = cursor.Prev() {
 			write("  ")
 			write(fmt.Sprintf("%d: %s", rid,
-				UnmarshalRenameVal(rawRenameVal)))
+				unmarshalRenameVal(rawRenameVal)))
 			write("\n")
 		}
 	}
 }
 
-func dumpSaves(tx *bolt.Tx, write WriteStr, writeRaw WriteRaw) error {
+func dumpSaves(tx *bolt.Tx, write writeStr, writeRaw writeRaw) error {
 	saves := tx.Bucket(savesBucket)
 	if saves == nil {
 		write("error: missing saves\n")
@@ -111,7 +111,7 @@ func dumpSaves(tx *bolt.Tx, write WriteStr, writeRaw WriteRaw) error {
 		cursor := saves.Cursor()
 		rawSid, _ := cursor.First()
 		for ; rawSid != nil; rawSid, _ = cursor.Next() {
-			sid := UnmarshalSid(rawSid)
+			sid := unmarshalSid(rawSid)
 			write(fmt.Sprintf("  sid #%d: ", sid))
 			if err := dumpSave(saves, rawSid, write, writeRaw); err != nil {
 				return err
@@ -121,14 +121,14 @@ func dumpSaves(tx *bolt.Tx, write WriteStr, writeRaw WriteRaw) error {
 	return nil
 }
 
-func dumpSave(saves *bolt.Bucket, rawSid []byte, write WriteStr,
-	writeRaw WriteRaw) error {
+func dumpSave(saves *bolt.Bucket, rawSid []byte, write writeStr,
+	writeRaw writeRaw) error {
 	save := saves.Bucket(rawSid)
 	if save == nil {
 		write("error: missing save\n")
 	} else {
 		rawWhen := save.Get(saveWhen)
-		when, err := UnmarshalTime(rawWhen)
+		when, err := unmarshalTime(rawWhen)
 		if err != nil {
 			return err
 		}
@@ -152,10 +152,10 @@ func dumpSave(saves *bolt.Bucket, rawSid []byte, write WriteStr,
 	return nil
 }
 
-func dumpEntry(rawFilename []byte, rawEntry []byte, write WriteStr,
-	writeRaw WriteRaw) {
+func dumpEntry(rawFilename []byte, rawEntry []byte, write writeStr,
+	writeRaw writeRaw) {
 	write("    ")
 	writeRaw(rawFilename)
-	entry := UnmarshalEntry(rawEntry)
+	entry := unmarshalEntry(rawEntry)
 	write(" " + entry.String() + "\n")
 }

@@ -28,9 +28,9 @@ func (me StateVal) String() string {
 	return fmt.Sprintf("%s%s#%d:%s", monitored, renamed, me.Sid, me.MimeType)
 }
 
-func (me StateVal) Marshal() []byte {
+func (me StateVal) marshal() []byte {
 	raw := make([]byte, 0, 10)
-	raw = append(raw, me.Sid.Marshal()...)
+	raw = append(raw, me.Sid.marshal()...)
 	var monitored byte = 'M'
 	if !me.Monitored {
 		monitored = 'U'
@@ -44,10 +44,10 @@ func (me StateVal) Marshal() []byte {
 	return append(raw, []byte(me.MimeType)...)
 }
 
-func UnmarshalStateVal(raw []byte) StateVal {
+func unmarshalStateVal(raw []byte) StateVal {
 	var stateVal StateVal
 	index := SidSize
-	stateVal.Sid = UnmarshalSid(raw[:index])
+	stateVal.Sid = unmarshalSid(raw[:index])
 	stateVal.Monitored = raw[index] == 'M'
 	index++
 	stateVal.Renamed = raw[index] == 'r'
@@ -68,7 +68,7 @@ func newState(filename string, stateVal StateVal) *StateItem {
 }
 
 func newStateFromRaw(rawFilename []byte, rawStateVal []byte) *StateItem {
-	return newState(string(rawFilename), UnmarshalStateVal(rawStateVal))
+	return newState(string(rawFilename), unmarshalStateVal(rawStateVal))
 }
 
 func (me StateItem) String() string {
