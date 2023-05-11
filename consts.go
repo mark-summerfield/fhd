@@ -33,4 +33,5 @@ var (
 		"moc_*.cpp", "qrc_*.cpp", "ui_*.h"}
 
 	uint16size = 2
+	uint32size = 4
 )

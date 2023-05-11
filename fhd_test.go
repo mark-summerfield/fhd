@@ -2,7 +2,6 @@ package fhd
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -86,108 +85,6 @@ func TestFlagForSizes(t *testing.T) {
 	}
 }
 
-func TestSidSequence(t *testing.T) {
-	filename := filepath.Join(os.TempDir(), "temp2.fhd")
-	fhd, err := New(filename)
-	defer func() { _ = fhd.Close() }()
-	defer func() { os.Remove(filename) }()
-	if err != nil {
-		t.Errorf("unexpected error: %s", err)
-	} else {
-		expected := "save #1"
-		err = fhd.db.Update(func(tx *bolt.Tx) error {
-			sidInfo, err := fhd.newSid(tx, expected)
-			if err != nil {
-				t.Errorf("unexpected error: %s", err)
-			}
-			if sidInfo.Sid != 1 {
-				t.Errorf("unexpected sid, expected 1, got %d", sidInfo.Sid)
-			}
-			if sidInfo.Comment != expected {
-				t.Errorf("unexpected sid, expected %s, got %s", expected,
-					sidInfo.Comment)
-			}
-			saves := tx.Bucket(savesBucket)
-			if saves == nil {
-				err := fmt.Errorf("expected savesBucket, got nil")
-				t.Error(err)
-				return err
-			}
-			_, err = saves.CreateBucket(sidInfo.Sid.marshal())
-			if err != nil {
-				t.Error(err)
-				return err
-			}
-			u, _ := saves.NextSequence()
-			sid := SID(u)
-			if sid != 2 {
-				t.Errorf("expected sid of 2: %d", sid)
-			}
-			_, err = saves.CreateBucket((sidInfo.Sid + 1).marshal())
-			if err != nil {
-				t.Error(err)
-				return err
-			}
-			u, _ = saves.NextSequence()
-			sid = SID(u)
-			if sid != 3 {
-				t.Errorf("expected sid of 3: %d", sid)
-			}
-			_, err = saves.CreateBucket((sidInfo.Sid + 2).marshal())
-			if err != nil {
-				t.Error(err)
-				return err
-			}
-			return nil
-		})
-		if err != nil {
-			t.Errorf("unexpected error: %s", err)
-		}
-		err = fhd.db.View(func(tx *bolt.Tx) error {
-			saves := tx.Bucket(savesBucket)
-			if saves == nil {
-				t.Error("expected savesBucket, got nil")
-			}
-			cursor := saves.Cursor()
-			rawSid, _ := cursor.Last()
-			if rawSid == nil {
-				t.Error("expected savesBucket sid 3, got nil")
-			}
-			sid := unmarshalSid(rawSid)
-			if sid != 3 {
-				t.Errorf("expected savesBucket expected 3 got %v", sid)
-			}
-			rawSid, _ = cursor.Prev()
-			if rawSid == nil {
-				t.Error("expected savesBucket sid 2, got nil")
-			}
-			sid = unmarshalSid(rawSid)
-			if err != nil {
-				t.Errorf("unexpected error: %s", err)
-			}
-			if sid != 2 {
-				t.Errorf("expected savesBucket expected 2 got %v", sid)
-			}
-			rawSid, _ = cursor.Prev()
-			if rawSid == nil {
-				t.Error("expected savesBucket sid 1, got nil")
-			}
-			sid = unmarshalSid(rawSid)
-			if sid != 1 {
-				t.Errorf("expected savesBucket expected 1 got %v", sid)
-			}
-			rawSid, _ = cursor.Prev()
-			if rawSid != nil {
-				t.Errorf("expected savesBucket nil got %v", rawSid)
-			}
-			return nil
-		})
-		if err != nil {
-			t.Errorf("unexpected error: %s", err)
-		}
-	}
-}
-
 func Test2(t *testing.T) {
 	dir, err := os.Getwd()
 	if err != nil {
@@ -246,15 +143,12 @@ func Test_tdata(t *testing.T) {
 		t.Errorf("unexpected error: %s", err)
 	} else {
 		filename := "tdata.fhd"
+		removeFhds(filename)
 		err = os.Chdir("tdata/1")
 		if err != nil {
 			t.Errorf("unexpected error: %s", err)
 		}
 		fhd, _ := New(filename)
-		defer func() {
-			_ = os.Chdir(dir)
-			os.Remove("tdata/1/" + filename)
-		}()
 		states, err := fhd.States()
 		if err != nil {
 			t.Errorf("unexpected error: %s", err)
@@ -283,8 +177,8 @@ func Test_tdata(t *testing.T) {
 		if len(states) != 4 {
 			t.Errorf("expected 4 states, got %d", len(states))
 		}
-		if len(states) != fhd.Len() {
-			t.Errorf("expected 4 files, got %d", fhd.Len())
+		if len(states) != fhd.SaveCount() {
+			t.Errorf("expected 4 files, got %d", fhd.SaveCount())
 		}
 		var buffer bytes.Buffer
 		for _, state := range states {
@@ -308,24 +202,39 @@ func Test_tdata(t *testing.T) {
 		if err != nil {
 			t.Errorf("unexpected error: %s", err)
 		}
+
 		if err = copyFile("../2/"+filename, filename); err != nil {
 			t.Errorf("unexpected error: %s", err)
 		}
+
 		err = os.Chdir("../2")
 		if err != nil {
 			t.Errorf("unexpected error: %s", err)
 		}
 		fhd, _ = New(filename)
-		defer func() {
-			_ = os.Chdir(dir)
-			os.Remove("tdata/2/" + filename)
-		}()
 		buffer.Reset()
-		save, err := fhd.Save("second save")
+		expected = "second save"
+		saveItem, err = fhd.Save(expected)
 		if err != nil {
 			t.Errorf("unexpected error: %s", err)
 		}
-		fmt.Println(save)
+		if saveItem.Sid != 2 {
+			t.Errorf("expected SID of 2, got %d", saveItem.Sid)
+		}
+		if saveItem.Comment != expected {
+			t.Errorf("expected Comment of %q, got %q", expected,
+				saveItem.Comment)
+		}
+		states, err = fhd.States()
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if len(states) != 4 {
+			t.Errorf("expected 4 states, got %d", len(states))
+		}
+		if fhd.SaveCount() != 3 {
+			t.Errorf("expected 3 saved files, got %d", fhd.SaveCount())
+		}
 		// TODO
 		// do work e.g., save & extract to check tdata.fhd
 		// cp tdata.fhd ../3
@@ -350,6 +259,17 @@ func Test_tdata(t *testing.T) {
 			}
 			buffer.Reset()
 		}
+		err = os.Chdir(dir)
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		removeFhds(filename)
+	}
+}
+
+func removeFhds(filename string) {
+	for _, i := range []string{"1", "2", "3", "4"} {
+		os.Remove("tdata/" + i + "/" + filename)
 	}
 }
 

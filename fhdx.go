@@ -29,24 +29,14 @@ func newDb(filename string) (*bolt.DB, error) {
 			return fmt.Errorf("failed to create bucket %q: %s",
 				statesBucket, err)
 		}
-		saves, err := tx.CreateBucketIfNotExists(savesBucket)
+		_, err = tx.CreateBucketIfNotExists(savesBucket)
 		if err != nil {
 			return fmt.Errorf("failed to create bucket %q: %s", savesBucket,
 				err)
 		}
-		err = saves.SetSequence(0) // next i.e., first used, will be 1.
-		if err != nil {
-			return fmt.Errorf("failed to initialize IDs for %q: %s",
-				savesBucket, err)
-		}
-		renamed, err := tx.CreateBucketIfNotExists(renamedBucket)
+		_, err = tx.CreateBucketIfNotExists(renamedBucket)
 		if err != nil {
 			return fmt.Errorf("failed to create bucket %q: %s",
-				renamedBucket, err)
-		}
-		err = renamed.SetSequence(0) // next i.e., first used, will be 1.
-		if err != nil {
-			return fmt.Errorf("failed to initialize IDs for %q: %s",
 				renamedBucket, err)
 		}
 		return nil
@@ -167,9 +157,31 @@ func (me *Fhd) newSid(tx *bolt.Tx, comment string) (SaveItem, error) {
 		return newInvalidSaveItem(), fmt.Errorf("failed to find %q",
 			savesBucket)
 	}
-	u, _ := saves.NextSequence()
-	sid = SID(u)
+	cursor := saves.Cursor()
+	rawSid, _ := cursor.Last()
+	if rawSid == nil {
+		sid = 1 // start at 1
+	} else {
+		sid = unmarshalSid(rawSid) + 1
+	}
 	return newSaveItem(sid, time.Now(), comment), nil
+}
+
+func (me *Fhd) newRid(tx *bolt.Tx) (uint32, error) {
+	renamed := tx.Bucket(renamedBucket)
+	if renamed == nil {
+		return 0, fmt.Errorf("failed to find %q", renamedBucket)
+	}
+	cursor := renamed.Cursor()
+	rawRid, _ := cursor.Last()
+	if rawRid == nil {
+		return 1, nil // start at 1
+	}
+	rid := unmarshalUint32(rawRid)
+	if rid == 0 {
+		return 0, fmt.Errorf("invalid rid: %v (0)", rawRid)
+	}
+	return rid, nil
 }
 
 // If the new file's SHA256 != prev SHA256 (or there is no prev) we save the

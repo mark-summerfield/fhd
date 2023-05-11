@@ -263,13 +263,13 @@ func (me *Fhd) SaveItemForSid(sid SID) SaveItem {
 	return saveItem
 }
 
-// Len returns the number of saved files in the most recent save.
-func (me *Fhd) Len() int {
-	return me.LenForSid(me.Sid())
+// SaveCount returns the number of saved files in the most recent save.
+func (me *Fhd) SaveCount() int {
+	return me.SaveCountForSid(me.Sid())
 }
 
-// LenForSid returns the number of saved files in the specified save.
-func (me *Fhd) LenForSid(sid SID) int {
+// SaveCountForSid returns the number of saved files in the specified save.
+func (me *Fhd) SaveCountForSid(sid SID) int {
 	count := 0
 	if !sid.IsValid() {
 		return 0

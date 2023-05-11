@@ -30,3 +30,18 @@ func unmarshalUint16(raw []byte) uint16 {
 	}
 	return u
 }
+
+func marshalUint32(u uint32) []byte {
+	raw := make([]byte, uint32size)
+	binary.BigEndian.PutUint32(raw, u)
+	return raw
+}
+
+func unmarshalUint32(raw []byte) uint32 {
+	var u uint32
+	buf := bytes.NewReader(raw)
+	if err := binary.Read(buf, binary.BigEndian, &u); err != nil {
+		return 0
+	}
+	return u
+}

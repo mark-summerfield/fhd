@@ -42,7 +42,7 @@ st.sh
 	# if renamed only keep newname here
 
     "renamed" bucket of RenameItem (key + RenameVal)
-	key rid int # unique generated ID
+	key rid uint32 # unique generated ID
 	value RenameVal {
 	    newFilename string
 	    oldFilename string
