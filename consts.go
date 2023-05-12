@@ -19,9 +19,6 @@ var (
 	configFormat = []byte("format")
 	configIgnore = []byte("ignore")
 
-	saveItemsWhen    = []byte("*when")
-	saveItemsComment = []byte("*comment")
-
 	emptyValue = []byte{}
 
 	// Should also ignore hidden (.) files and subdirs by default.
