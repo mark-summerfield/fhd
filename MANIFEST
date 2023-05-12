@@ -1,23 +1,17 @@
-# TODO implement Rename() see notes at the end
-# TODO implement Compact()
-# TODO implement Delete()
-# TODO implement Purge()
-# TODO can I support branches (& therefore merge)?
-
 fhd.go
 fhdx.go
-dump.go
-entry.go
-state.go
-rename.go
-flag.go
-filekind.go
-saveitem.go
-sid.go
-marshal.go
-util.go
+# dump.go
+# entry.go
+# state.go
+# rename.go
+# flag.go
+# filekind.go
+# saveitem.go
+# sid.go
+# marshal.go
+# util.go
 consts.go
-
+ 
 fhd_test.go # TODO
 
 go.mod
@@ -25,64 +19,5 @@ go.mod
 README.md
 
 st.sh
-# NOTE Key-Value Database Structure
-
-    "config" bucket
-	key string # e.g., key="format" value=1
-	value any  # e.g., key="ignore" value=bucket key=filename value=ε
-
-    "states" bucket of StateItem (key + StatVal)
-	key filename string
-	value StateVal {
-	    monitored bool
-	    renamed bool
-	    sid int # the most recent sid this file was saved into
-	    kind FileKind # binary (0) image (1) text (2)
-	}
-	# if renamed only keep newname here
-
-    "renamed" bucket of RenameItem (key + RenameVal)
-	key rid uint32 # unique generated ID
-	value RenameVal {
-	    newFilename string
-	    oldFilename string
-	    oldSid int
-	}
-
-    "saves" bucket
-	key sid int # > 0
-	value bucket
-	    "*when" time.Time
-	    "*comment" string
-	    # then > 0 of:
-	    key filename string
-	    value Entry
-
-# NOTE Renaming
-
-    Rename algorithm new
-
-    - unmonitor oldFilename and remember sid
-    - monitored newFilename
-    - add "renamed" key next rid, value newFilename, oldFilename,
-      oldSid = remembered sid
-
-    Rename algorithm old
-
-    - create "states" key newFilename with oldFilename's value,
-      set its renamed to true,
-      remember its sid
-    - delete "states" key oldFilename
-    - add "renamed" key next rid, value newFilename, oldFilename,
-      oldSid = remembered sid
-
-    Search algorithm
-
-    - get state for filename
-    - if state renamed = false, can trace history by sid→filename in "saves"
-    - else
-        iterated "renamed" to find filename = newFilename
-	can trace history by sid→filename in "saves" back until oldSid;
-	then trace by oldSid→oldFilename
 
 # vim: syn=yaml
