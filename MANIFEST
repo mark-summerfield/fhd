@@ -1,17 +1,16 @@
 fhd.go
 fhdx.go
-# dump.go
-# entry.go
-# state.go
-# rename.go
-# flag.go
-# filekind.go
-# saveitem.go
-# sid.go
-# marshal.go
-# util.go
+dump.go
+entry.go
+state.go
+rename.go
+flag.go
+filekind.go
+saveitem.go
+sid.go
+marshal.go
+util.go
 consts.go
-sql.go # TODO fid AUTOINCREMENT?
  
 fhd_test.go # TODO
 
@@ -20,5 +19,32 @@ go.mod
 README.md
 
 st.sh
+
+# NOTE Key-Value Database Structure
+
+    "config" bucket
+	key string # e.g., key="format" value=1
+	value any  # e.g., key="ignore" value=bucket key=filename value=ε
+
+    "states" bucket of StateItem (key + StatVal)
+	key filename string
+	value StateVal {
+	    monitored bool
+	    sid int # the most recent sid this file was saved into
+	    filekind byte # so clients can see if they can offer diffs
+	}
+
+    "saveitems" bucket of SaveItem (key + SaveVal)
+	key sid int # > 0
+	value SaveVal {
+	    when time.Time
+	    comment string
+	}
+
+    "saves" bucket of buckets
+	key sid int # > 0
+	value bucket
+	    key filename string
+	    value Entry
 
 # vim: syn=yaml
