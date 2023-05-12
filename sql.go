@@ -10,6 +10,14 @@ const (
 		PRAGMA synchronous = NORMAL;
 		PRAGMA temp_store = MEMORY;`
 
+	sqlCreateSaveInfo = `CREATE TABLE saveinfo (
+		sid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+		timestamp DATETIME NOT NULL,
+		comment TEXT,
+
+		FOREIGN KEY(sid) REFERENCES saves(sid),
+		CHECK(sid > 0)
+	)`
 	sqlCreateNames = `CREATE TABLE names (
 		fid INTEGER NOT NULL,
 		sid INTEGER NOT NULL,
@@ -33,14 +41,6 @@ const (
 		CHECK(fid > 0),
 		CHECK(sid > 0),
 		CHECK(flag IN ('R', 'F', 'L'))
-	)`
-	sqlCreateSaveInfo = `CREATE TABLE saveinfo (
-		sid INTEGER NOT NULL PRIMARY KEY,
-		timestamp DATETIME NOT NULL,
-		comment TEXT,
-
-		FOREIGN KEY(sid) REFERENCES saves(sid),
-		CHECK(sid > 0)
 	)`
 	sqlCreateStates = `CREATE TABLE states (
 		fid INTEGER NOT NULL PRIMARY KEY,

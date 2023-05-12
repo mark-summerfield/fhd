@@ -11,7 +11,7 @@ fhdx.go
 # marshal.go
 # util.go
 consts.go
-sql.go
+sql.go # TODO fid AUTOINCREMENT?
  
 fhd_test.go # TODO
 
