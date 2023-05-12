@@ -13,8 +13,8 @@ func setPragmas(db *sql.DB) error {
 }
 
 func makeTables(db *sql.DB) error {
-	return execStatements(db, []string{sqlCreateNames, sqlCreateSaves,
-		sqlCreateSaveInfo, sqlCreateStates})
+	return execStatements(db, []string{sqlCreateSids, sqlCreateFids,
+		sqlCreateSaves, sqlCreateStates})
 }
 
 func execStatements(db *sql.DB, statements []string) error {
