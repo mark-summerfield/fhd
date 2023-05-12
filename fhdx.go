@@ -6,7 +6,6 @@ package fhd
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	"path/filepath"
 	"time"
 
@@ -93,7 +92,7 @@ func (me *Fhd) monitor(filenames ...string) error {
 				stateVal = unmarshalStateVal(rawOldStateVal)
 				stateVal.Monitored = true
 			} else {
-				stateVal = newStateVal(InvalidSID, true, "")
+				stateVal = newStateVal(InvalidSID, true, binKind)
 			}
 			if ierr := states.Put(rawFilename,
 				stateVal.marshal()); ierr != nil {
@@ -215,7 +214,7 @@ func (me *Fhd) maybeSaveOne(tx *bolt.Tx, saves, save *bolt.Bucket, sid SID,
 	if states == nil {
 		return true, errors.New("missing states")
 	}
-	stateVal := newStateVal(sid, true, http.DetectContentType(raw))
+	stateVal := newStateVal(sid, true, fileKindForRaw(raw))
 	return true, states.Put(rawFilename, stateVal.marshal())
 }
 

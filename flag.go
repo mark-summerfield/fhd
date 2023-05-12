@@ -4,21 +4,15 @@
 package fhd
 
 const (
-	rawFlag flag = iota
-	flateFlag
-	lzwFlag
+	rawFlag   flag = 'R'
+	flateFlag flag = 'F'
+	lzwFlag   flag = 'L'
 )
 
 type flag byte
 
 func (me flag) String() string {
-	switch me {
-	case flateFlag:
-		return "F"
-	case lzwFlag:
-		return "L"
-	}
-	return "R"
+	return string(me)
 }
 
 func flagForSizes(rawSize, flateSize, lzwSize int) flag {

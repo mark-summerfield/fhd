@@ -9,11 +9,11 @@ type StateVal struct {
 	Sid       SID // Most recent SID the corresponding file was saved into
 	Monitored bool
 	Renamed   bool
-	MimeType  string
+	FileKind  fileKind
 }
 
-func newStateVal(sid SID, monitored bool, mimeType string) StateVal {
-	return StateVal{Sid: sid, Monitored: monitored, MimeType: mimeType}
+func newStateVal(sid SID, monitored bool, fileKind fileKind) StateVal {
+	return StateVal{Sid: sid, Monitored: monitored, FileKind: fileKind}
 }
 
 func (me StateVal) String() string {
@@ -25,7 +25,7 @@ func (me StateVal) String() string {
 	if !me.Renamed {
 		renamed = " "
 	}
-	return fmt.Sprintf("%s%s#%d:%s", monitored, renamed, me.Sid, me.MimeType)
+	return fmt.Sprintf("%s%s#%d:%s", monitored, renamed, me.Sid, me.FileKind)
 }
 
 func (me StateVal) marshal() []byte {
@@ -41,7 +41,7 @@ func (me StateVal) marshal() []byte {
 		renamed = ' '
 	}
 	raw = append(raw, renamed)
-	return append(raw, []byte(me.MimeType)...)
+	return append(raw, byte(me.FileKind))
 }
 
 func unmarshalStateVal(raw []byte) StateVal {
@@ -53,7 +53,7 @@ func unmarshalStateVal(raw []byte) StateVal {
 	stateVal.Renamed = raw[index] == 'r'
 	if len(raw) > sidSize {
 		index++
-		stateVal.MimeType = string(raw[index:])
+		stateVal.FileKind = fileKind(raw[index])
 	}
 	return stateVal
 }

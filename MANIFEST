@@ -11,6 +11,7 @@ entry.go
 state.go
 rename.go
 flag.go
+filekind.go
 saveitem.go
 sid.go
 marshal.go
@@ -36,7 +37,7 @@ st.sh
 	    monitored bool
 	    renamed bool
 	    sid int # the most recent sid this file was saved into
-	    mimetype string # so clients can see if they can offer diffs
+	    kind FileKind # binary (0) image (1) text (2)
 	}
 	# if renamed only keep newname here
 

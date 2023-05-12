@@ -400,10 +400,10 @@ const (
   format=1
   ignore= "*#[0-9].*" "*.a" "*.bak" "*.class" "*.dll" "*.exe" "*.fhd" "*.jar" "*.ld" "*.ldx" "*.li" "*.lix" "*.o" "*.obj" "*.py[co]" "*.rs.bk" "*.so" "*.sw[nop]" "*.swp" "*.tmp" "*~" "gpl-[0-9].[0-9].txt" "louti[0-9]*" "moc_*.cpp" "qrc_*.cpp" "ui_*.h"
 states:
-  battery.png M #1:image/png
-  computer.bmp M #1:image/bmp
-  ring.py M #1:text/plain; charset=utf-8
-  wordsearch.pyw M #1:text/plain; charset=utf-8
+  battery.png M #1:I
+  computer.bmp M #1:I
+  ring.py M #1:T
+  wordsearch.pyw M #1:T
 renamed:
 saves:
   sid #1: 2023-05-11 08:45:38 started
