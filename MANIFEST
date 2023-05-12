@@ -11,6 +11,7 @@ fhdx.go
 # marshal.go
 # util.go
 consts.go
+sql.go
  
 fhd_test.go # TODO
 

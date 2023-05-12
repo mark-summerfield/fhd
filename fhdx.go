@@ -9,11 +9,12 @@ import (
 )
 
 func setPragmas(db *sql.DB) error {
-	return execStatements(db, dbPragmas)
+	return execStatements(db, []string{sqlPragmas})
 }
 
 func makeTables(db *sql.DB) error {
-	return execStatements(db, dbTables)
+	return execStatements(db, []string{sqlCreateNames, sqlCreateSaves,
+		sqlCreateSaveInfo, sqlCreateStates})
 }
 
 func execStatements(db *sql.DB, statements []string) error {
