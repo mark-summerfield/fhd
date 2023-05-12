@@ -9,8 +9,6 @@ import (
 	"os"
 	"time"
 
-	"golang.org/x/exp/slices"
-
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -95,8 +93,38 @@ func dumpSaves(tx *bolt.Tx, write writeStr, writeRaw writeRaw) error {
 		for ; rawSid != nil; rawSid, _ = cursor.Next() {
 			sid := unmarshalSid(rawSid)
 			write(fmt.Sprintf("  sid #%d: ", sid))
+			if err := dumpSaveItem(tx, rawSid, write,
+				writeRaw); err != nil {
+				return err
+			}
 			if err := dumpSave(saves, rawSid, write, writeRaw); err != nil {
 				return err
+			}
+		}
+	}
+	return nil
+}
+
+func dumpSaveItem(tx *bolt.Tx, rawSid []byte, write writeStr,
+	writeRaw writeRaw) error {
+	saveItems := tx.Bucket(saveItemsBucket)
+	if saveItems == nil {
+		write("error: missing save\n")
+	} else {
+		rawSaveVal := saveItems.Get(rawSid)
+		if rawSaveVal == nil {
+			write("error: missing saveval\n")
+		} else {
+			saveVal, err := unmarshalSaveVal(rawSaveVal)
+			if err != nil {
+				write(fmt.Sprintf("error: unmarshal saveval: %s", err))
+			} else {
+				write(saveVal.When.Format(time.DateTime))
+				if len(saveVal.Comment) > 0 {
+					write(" ")
+					write(saveVal.Comment)
+				}
+				write("\n")
 			}
 		}
 	}
@@ -109,20 +137,6 @@ func dumpSave(saves *bolt.Bucket, rawSid []byte, write writeStr,
 	if save == nil {
 		write("error: missing save\n")
 	} else {
-		/* // TODO saveitem
-		rawWhen := save.Get(saveWhen)
-		when, err := unmarshalTime(rawWhen)
-		if err != nil {
-			return err
-		}
-		write(when.Format(time.DateTime))
-		rawComment := save.Get(saveComment)
-		if len(rawComment) > 0 {
-			write(" ")
-			writeRaw(rawComment)
-		}
-		*/
-		write("\n")
 		cursor := save.Cursor()
 		rawFilename, rawEntry := cursor.First()
 		for ; rawFilename != nil; rawFilename, rawEntry = cursor.Next() {

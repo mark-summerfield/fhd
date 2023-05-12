@@ -219,6 +219,9 @@ func (me *Fhd) Save(comment string) (SaveItem, error) {
 				count++
 			}
 		}
+		if err == nil && count > 0 {
+			err = me.saveItemMeta(tx, saveItem)
+		}
 		return err
 	})
 	return saveItem, err
@@ -233,22 +236,14 @@ func (me *Fhd) SaveItemForSid(sid SID) SaveItem {
 		if saveItems == nil {
 			return fmt.Errorf("failed to find %q", saveItemsBucket)
 		}
-		rawSidVal := saveItems.Get(sid.marshal())
-		if rawSidVal != nil {
-			saveItem = unmarshalRawSidVal(rawSidVal)
-			/* // TODO put in unmarshalRawSidVal
-			rawWhen := save.Get(saveItemsWhen)
-			when, err := unmarshalTime(rawWhen)
+		rawSaveVal := saveItems.Get(sid.marshal())
+		if rawSaveVal != nil {
+			saveVal, err := unmarshalSaveVal(rawSaveVal)
 			if err != nil {
 				return err
 			}
-			var comment string
-			rawComment := save.Get(saveItemsComment)
-			if rawComment != nil {
-				comment = string(rawComment)
-			}
-			saveItem = newSaveItem(sid, when, comment)
-			*/
+			saveItem.Sid = sid
+			saveItem.SaveVal = saveVal
 		}
 		return nil
 	})
@@ -274,7 +269,7 @@ func (me *Fhd) SaveCountForSid(sid SID) int {
 		if saves != nil {
 			save := saves.Bucket(sid.marshal())
 			if save != nil {
-				count = save.Stats().KeyN - savePredefinedKeys
+				count = save.Stats().KeyN
 			}
 		}
 		return nil
@@ -431,11 +426,11 @@ func (me *Fhd) ExtractForSid(sid SID, filename string,
 
 // Rename oldFilename to newFilename. This starts newFilename on a new save
 // history unconnected with oldFilename.
-func (me *Fhd) Rename(newFilename, oldFilename string) (SaveItem, error) {
+func (me *Fhd) Rename(oldFilename, newFilename string) (SaveItem, error) {
 	var saveItem SaveItem
 	err1 := me.Unmonitor(oldFilename)
 	saveItem, err2 := me.MonitorWithComment(newFilename,
-		fmt.Sprintf("renamed %q ← %q", newFilename, oldFilename))
+		fmt.Sprintf("renamed %q → %q", oldFilename, newFilename))
 	if err1 == nil {
 		return saveItem, err2
 	}

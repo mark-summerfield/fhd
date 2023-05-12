@@ -1,9 +1,13 @@
+# TODO test Rename()
+# TODO Compact()
+# TODO Delete()
+# TODO Purge()
+
 fhd.go
 fhdx.go
 dump.go
 entry.go
 state.go
-rename.go
 flag.go
 filekind.go
 saveitem.go
@@ -26,11 +30,11 @@ st.sh
 	key string # e.g., key="format" value=1
 	value any  # e.g., key="ignore" value=bucket key=filename value=ε
 
-    "states" bucket of StateItem (key + StatVal)
+    "states" bucket of StateItem (key + StateVal)
 	key filename string
 	value StateVal {
 	    monitored bool
-	    sid int # the most recent sid this file was saved into
+	    lastsid int # the most recent sid this file was saved into
 	    filekind byte # so clients can see if they can offer diffs
 	}
 

@@ -151,12 +151,12 @@ func (me *Fhd) getIgnores(tx *bolt.Tx) *bolt.Bucket {
 
 func (me *Fhd) newSid(tx *bolt.Tx, comment string) (SaveItem, error) {
 	var sid SID
-	sids := tx.Bucket(saveItemsBucket)
-	if sids == nil {
+	saveItems := tx.Bucket(saveItemsBucket)
+	if saveItems == nil {
 		return newInvalidSaveItem(), fmt.Errorf("failed to find %q",
 			saveItemsBucket)
 	}
-	cursor := sids.Cursor()
+	cursor := saveItems.Cursor()
 	rawSid, _ := cursor.Last()
 	if rawSid == nil {
 		sid = 1 // start at 1
@@ -164,6 +164,18 @@ func (me *Fhd) newSid(tx *bolt.Tx, comment string) (SaveItem, error) {
 		sid = unmarshalSid(rawSid) + 1
 	}
 	return newSaveItem(sid, time.Now(), comment), nil
+}
+
+func (me *Fhd) saveItemMeta(tx *bolt.Tx, saveItem SaveItem) error {
+	saveItems := tx.Bucket(saveItemsBucket)
+	if saveItems == nil {
+		return fmt.Errorf("failed to find %q", saveItemsBucket)
+	}
+	rawSaveVal, err := saveItem.SaveVal.marshal()
+	if err == nil {
+		err = saveItems.Put(saveItem.Sid.marshal(), rawSaveVal)
+	}
+	return err
 }
 
 // If the new file's SHA256 != prev SHA256 (or there is no prev) we save the

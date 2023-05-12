@@ -2,6 +2,7 @@ package fhd
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -197,6 +198,12 @@ func Test_tdata(t *testing.T) {
 		actual := buffer.String()
 		if normalized(actual) != normalized(expected1) {
 			t.Error("DumpTo doesn't match expected1")
+
+			fmt.Println("actual")
+			fmt.Println(normalized(actual))
+			fmt.Println("expected1")
+			fmt.Println(normalized(expected1))
+			fmt.Println("-------------------")
 		}
 
 		err = fhd.Close()
@@ -400,11 +407,10 @@ const (
   format=1
   ignore= "*#[0-9].*" "*.a" "*.bak" "*.class" "*.dll" "*.exe" "*.fhd" "*.jar" "*.ld" "*.ldx" "*.li" "*.lix" "*.o" "*.obj" "*.py[co]" "*.rs.bk" "*.so" "*.sw[nop]" "*.swp" "*.tmp" "*~" "gpl-[0-9].[0-9].txt" "louti[0-9]*" "moc_*.cpp" "qrc_*.cpp" "ui_*.h"
 states:
-  battery.png M #1:I
-  computer.bmp M #1:I
-  ring.py M #1:T
-  wordsearch.pyw M #1:T
-renamed:
+  battery.png M#1:I
+  computer.bmp M#1:I
+  ring.py M#1:T
+  wordsearch.pyw M#1:T
 saves:
   sid #1: 2023-05-11 08:45:38 started
     battery.png R 2,525 bytes SHA256=7c94b6962b6f…7b6dfdb68c6 
