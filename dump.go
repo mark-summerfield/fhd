@@ -107,22 +107,22 @@ func dumpSaves(tx *bolt.Tx, write writeStr, writeRaw writeRaw) error {
 
 func dumpSaveItem(tx *bolt.Tx, rawSid []byte, write writeStr,
 	writeRaw writeRaw) error {
-	saveItems := tx.Bucket(saveItemsBucket)
-	if saveItems == nil {
+	saveInfo := tx.Bucket(saveInfoBucket)
+	if saveInfo == nil {
 		write("error: missing save\n")
 	} else {
-		rawSaveVal := saveItems.Get(rawSid)
-		if rawSaveVal == nil {
+		rawSaveInfoVal := saveInfo.Get(rawSid)
+		if rawSaveInfoVal == nil {
 			write("error: missing saveval\n")
 		} else {
-			saveVal, err := unmarshalSaveVal(rawSaveVal)
+			saveInfoVal, err := unmarshalSaveInfoVal(rawSaveInfoVal)
 			if err != nil {
 				write(fmt.Sprintf("error: unmarshal saveval: %s", err))
 			} else {
-				write(saveVal.When.Format(time.DateTime))
-				if len(saveVal.Comment) > 0 {
+				write(saveInfoVal.When.Format(time.DateTime))
+				if len(saveInfoVal.Comment) > 0 {
 					write(" ")
-					write(saveVal.Comment)
+					write(saveInfoVal.Comment)
 				}
 				write("\n")
 			}
@@ -138,18 +138,18 @@ func dumpSave(saves *bolt.Bucket, rawSid []byte, write writeStr,
 		write("error: missing save\n")
 	} else {
 		cursor := save.Cursor()
-		rawFilename, rawEntry := cursor.First()
-		for ; rawFilename != nil; rawFilename, rawEntry = cursor.Next() {
-			dumpEntry(rawFilename, rawEntry, write, writeRaw)
+		rawFilename, rawSaveVal := cursor.First()
+		for ; rawFilename != nil; rawFilename, rawSaveVal = cursor.Next() {
+			dumpSaveVal(rawFilename, rawSaveVal, write, writeRaw)
 		}
 	}
 	return nil
 }
 
-func dumpEntry(rawFilename []byte, rawEntry []byte, write writeStr,
+func dumpSaveVal(rawFilename []byte, rawSaveVal []byte, write writeStr,
 	writeRaw writeRaw) {
 	write("    ")
 	writeRaw(rawFilename)
-	entry := unmarshalEntry(rawEntry)
-	write(" " + entry.String() + "\n")
+	saveVal := unmarshalSaveVal(rawSaveVal)
+	write(" " + saveVal.String() + "\n")
 }

@@ -15,22 +15,22 @@ import (
 
 type shA256 [sha256.Size]byte
 
-type entry struct {
+type saveVal struct {
 	Sha  shA256
 	Flag flag
 	Blob []byte
 }
 
-func newEntry(sha shA256, flag flag) *entry {
-	return &entry{Sha: sha, Flag: flag}
+func newSaveVal(sha shA256, flag flag) *saveVal {
+	return &saveVal{Sha: sha, Flag: flag}
 }
 
-func unmarshalEntry(raw []byte) *entry {
-	return &entry{Sha: shA256(raw[:sha256.Size]),
+func unmarshalSaveVal(raw []byte) *saveVal {
+	return &saveVal{Sha: shA256(raw[:sha256.Size]),
 		Flag: flag(raw[sha256.Size]), Blob: raw[sha256.Size+1:]}
 }
 
-func (me *entry) marshal() []byte {
+func (me *saveVal) marshal() []byte {
 	raw := make([]byte, 0, sha256.Size+1+len(me.Blob))
 	raw = append(raw, me.Sha[:]...)
 	raw = append(raw, byte(me.Flag))
@@ -38,7 +38,7 @@ func (me *entry) marshal() []byte {
 }
 
 // String is for Dump() and debugging.
-func (me *entry) String() string {
+func (me *saveVal) String() string {
 	var text strings.Builder
 	text.WriteString(fmt.Sprintf("%s ", me.Flag))
 	if me.Flag == rawFlag && strings.HasPrefix(

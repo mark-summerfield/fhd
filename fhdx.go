@@ -33,10 +33,10 @@ func newDb(filename string) (*bolt.DB, error) {
 			return fmt.Errorf("failed to create bucket %q: %s", savesBucket,
 				err)
 		}
-		_, err = tx.CreateBucketIfNotExists(saveItemsBucket)
+		_, err = tx.CreateBucketIfNotExists(saveInfoBucket)
 		if err != nil {
 			return fmt.Errorf("failed to create bucket %q: %s",
-				saveItemsBucket, err)
+				saveInfoBucket, err)
 		}
 		return nil
 	})
@@ -149,31 +149,32 @@ func (me *Fhd) getIgnores(tx *bolt.Tx) *bolt.Bucket {
 	return config.Bucket(configIgnore)
 }
 
-func (me *Fhd) newSid(tx *bolt.Tx, comment string) (SaveItem, error) {
+func (me *Fhd) newSid(tx *bolt.Tx, comment string) (SaveInfoItem, error) {
 	var sid SID
-	saveItems := tx.Bucket(saveItemsBucket)
-	if saveItems == nil {
-		return newInvalidSaveItem(), fmt.Errorf("failed to find %q",
-			saveItemsBucket)
+	saveInfo := tx.Bucket(saveInfoBucket)
+	if saveInfo == nil {
+		return newInvalidSaveInfoItem(), fmt.Errorf("failed to find %q",
+			saveInfoBucket)
 	}
-	cursor := saveItems.Cursor()
+	cursor := saveInfo.Cursor()
 	rawSid, _ := cursor.Last()
 	if rawSid == nil {
 		sid = 1 // start at 1
 	} else {
 		sid = unmarshalSid(rawSid) + 1
 	}
-	return newSaveItem(sid, time.Now(), comment), nil
+	return newSaveInfoItem(sid, time.Now(), comment), nil
 }
 
-func (me *Fhd) saveItemMeta(tx *bolt.Tx, saveItem SaveItem) error {
-	saveItems := tx.Bucket(saveItemsBucket)
-	if saveItems == nil {
-		return fmt.Errorf("failed to find %q", saveItemsBucket)
+func (me *Fhd) saveInfoItemMeta(tx *bolt.Tx,
+	saveInfoItem SaveInfoItem) error {
+	saveInfo := tx.Bucket(saveInfoBucket)
+	if saveInfo == nil {
+		return fmt.Errorf("failed to find %q", saveInfoBucket)
 	}
-	rawSaveVal, err := saveItem.SaveVal.marshal()
+	rawSaveInfoVal, err := saveInfoItem.SaveInfoVal.marshal()
 	if err == nil {
-		err = saveItems.Put(saveItem.Sid.marshal(), rawSaveVal)
+		err = saveInfo.Put(saveInfoItem.Sid.marshal(), rawSaveInfoVal)
 	}
 	return err
 }
@@ -192,17 +193,17 @@ func (me *Fhd) maybeSaveOne(tx *bolt.Tx, saves, save *bolt.Bucket, sid SID,
 		return false, nil // No need to save if same as before.
 	}
 	flag := flagForSizes(len(raw), len(rawFlate), len(rawLzw))
-	entry := newEntry(sha, flag)
+	saveVal := newSaveVal(sha, flag)
 	switch flag {
 	case rawFlag:
-		entry.Blob = raw
+		saveVal.Blob = raw
 	case flateFlag:
-		entry.Blob = rawFlate
+		saveVal.Blob = rawFlate
 	case lzwFlag:
-		entry.Blob = rawLzw
+		saveVal.Blob = rawLzw
 	}
 	rawFilename := []byte(filename)
-	if err = save.Put(rawFilename, entry.marshal()); err != nil {
+	if err = save.Put(rawFilename, saveVal.marshal()); err != nil {
 		return true, err
 	}
 	states := tx.Bucket(statesBucket)
@@ -218,24 +219,24 @@ func (me *Fhd) sameAsPrev(saves *bolt.Bucket, newSid SID, filename string,
 	if prevSid == InvalidSID {
 		return false
 	}
-	entry := me.getEntry(saves, filename, prevSid)
-	if entry == nil {
-		return false // There is no previous entry for this filename.
+	saveVal := me.getSaveVal(saves, filename, prevSid)
+	if saveVal == nil {
+		return false // There is no previous saveVal for this filename.
 	}
-	return entry.Sha == *newSha
+	return saveVal.Sha == *newSha
 }
 
-func (me *Fhd) getEntry(saves *bolt.Bucket, filename string,
-	sid SID) *entry {
+func (me *Fhd) getSaveVal(saves *bolt.Bucket, filename string,
+	sid SID) *saveVal {
 	save := saves.Bucket(sid.marshal())
 	if save == nil {
 		return nil
 	}
-	rawEntry := save.Get([]byte(filename))
-	if rawEntry == nil {
+	rawSaveVal := save.Get([]byte(filename))
+	if rawSaveVal == nil {
 		return nil
 	}
-	return unmarshalEntry(rawEntry)
+	return unmarshalSaveVal(rawSaveVal)
 }
 
 func (me *Fhd) relativePath(filename string) string {

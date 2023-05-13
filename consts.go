@@ -11,15 +11,13 @@ var (
 
 	fileFormat byte = 1
 
-	configBucket    = []byte("config")
-	statesBucket    = []byte("states")
-	savesBucket     = []byte("saves")
-	saveItemsBucket = []byte("saveitems")
-
-	configFormat = []byte("format")
-	configIgnore = []byte("ignore")
-
-	emptyValue = []byte{}
+	configBucket   = []byte("config")
+	statesBucket   = []byte("states")
+	saveInfoBucket = []byte("saveinfo")
+	savesBucket    = []byte("saves")
+	configFormat   = []byte("format")
+	configIgnore   = []byte("ignore")
+	emptyValue     = []byte{}
 
 	// Should also ignore hidden (.) files and subdirs by default.
 	defaultIgnores = []string{"*#[0-9].*", "*.a", "*.bak", "*.class",

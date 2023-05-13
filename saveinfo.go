@@ -10,35 +10,36 @@ import (
 	"time"
 )
 
-type SaveVal struct {
+type SaveInfoVal struct {
 	When    time.Time
 	Comment string
 }
 
-type SaveItem struct {
+type SaveInfoItem struct {
 	Sid SID
-	SaveVal
+	SaveInfoVal
 }
 
-func newSaveItem(sid SID, when time.Time, comment string) SaveItem {
-	return SaveItem{Sid: sid, SaveVal: SaveVal{When: when, Comment: comment}}
+func newSaveInfoItem(sid SID, when time.Time, comment string) SaveInfoItem {
+	return SaveInfoItem{Sid: sid,
+		SaveInfoVal: SaveInfoVal{When: when, Comment: comment}}
 }
 
-func newInvalidSaveItem() SaveItem {
-	return SaveItem{Sid: InvalidSID}
+func newInvalidSaveInfoItem() SaveInfoItem {
+	return SaveInfoItem{Sid: InvalidSID}
 }
 
-func (me *SaveItem) IsValid() bool {
+func (me *SaveInfoItem) IsValid() bool {
 	return me.Sid.IsValid()
 }
 
-func (me *SaveItem) String() string {
+func (me *SaveInfoItem) String() string {
 	return fmt.Sprintf("%d@%s%q", me.Sid,
 		strings.ReplaceAll(me.When.Format(time.DateTime), " ", "T"),
 		me.Comment)
 }
 
-func (me SaveVal) marshal() ([]byte, error) {
+func (me SaveInfoVal) marshal() ([]byte, error) {
 	raw := make([]byte, 0)
 	rawWhen, err := me.When.MarshalBinary()
 	if err != nil {
@@ -50,21 +51,21 @@ func (me SaveVal) marshal() ([]byte, error) {
 	return raw, nil
 }
 
-func unmarshalSaveVal(raw []byte) (SaveVal, error) {
-	var saveVal SaveVal
+func unmarshalSaveInfoVal(raw []byte) (SaveInfoVal, error) {
+	var saveInfoVal SaveInfoVal
 	if len(raw) == 0 {
-		return saveVal, errors.New("can't unmarshal empty saveval")
+		return saveInfoVal, errors.New("can't unmarshal empty saveval")
 	}
 	index := int(raw[0]) + 1
 	when, err := unmarshalTime(raw[1:index])
 	if err != nil {
-		return saveVal, err
+		return saveInfoVal, err
 	}
 	var comment string
 	if len(raw) > index {
 		comment = string(raw[index:])
 	}
-	saveVal.When = when
-	saveVal.Comment = comment
-	return saveVal, nil
+	saveInfoVal.When = when
+	saveInfoVal.Comment = comment
+	return saveInfoVal, nil
 }

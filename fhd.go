@@ -90,17 +90,17 @@ func (me *Fhd) Monitored() ([]*StateItem, error) {
 
 // Monitor adds the given files to be monitored _and_ does an initial Save.
 // Returns the new Save ID (SID).
-func (me *Fhd) Monitor(filenames ...string) (SaveItem, error) {
+func (me *Fhd) Monitor(filenames ...string) (SaveInfoItem, error) {
 	return me.MonitorWithComment("", filenames...)
 }
 
 // MonitorWithComment adds the given files to be monitored _and_ does an
 // initial Save with the given comment. Returns the new Save ID (SID).
 func (me *Fhd) MonitorWithComment(comment string,
-	filenames ...string) (SaveItem, error) {
+	filenames ...string) (SaveInfoItem, error) {
 	err := me.monitor(filenames...)
 	if err != nil {
-		return newInvalidSaveItem(), err
+		return newInvalidSaveInfoItem(), err
 	}
 	return me.Save(comment)
 }
@@ -186,20 +186,20 @@ func (me *Fhd) Unignore(filenames ...string) error {
 }
 
 // Save saves a snapshot of every monitored file that's changed and returns
-// the corresponding SaveItem with the new save ID (SID).
-func (me *Fhd) Save(comment string) (SaveItem, error) {
+// the corresponding SaveInfoItem with the new save ID (SID).
+func (me *Fhd) Save(comment string) (SaveInfoItem, error) {
 	monitored, err := me.Monitored()
 	if err != nil {
-		return newInvalidSaveItem(), err
+		return newInvalidSaveInfoItem(), err
 	}
-	var saveItem SaveItem
+	var saveInfoItem SaveInfoItem
 	err = me.db.Update(func(tx *bolt.Tx) error {
 		var err error
-		saveItem, err = me.newSid(tx, comment)
+		saveInfoItem, err = me.newSid(tx, comment)
 		if err != nil {
-			return err // saveItem is invalid on err
+			return err // saveInfoItem is invalid on err
 		}
-		sid := saveItem.Sid
+		sid := saveInfoItem.Sid
 		saves := tx.Bucket(savesBucket)
 		if saves == nil {
 			return errors.New("missing saves")
@@ -220,37 +220,37 @@ func (me *Fhd) Save(comment string) (SaveItem, error) {
 			}
 		}
 		if err == nil && count > 0 {
-			err = me.saveItemMeta(tx, saveItem)
+			err = me.saveInfoItemMeta(tx, saveInfoItem)
 		}
 		return err
 	})
-	return saveItem, err
+	return saveInfoItem, err
 }
 
-// SaveItemForSid returns the SaveItem for the given SID or an invalid
-// SaveItem on error.
-func (me *Fhd) SaveItemForSid(sid SID) SaveItem {
-	var saveItem SaveItem
+// SaveInfoItemForSid returns the SaveInfoItem for the given SID or an
+// invalid SaveInfoItem on error.
+func (me *Fhd) SaveInfoItemForSid(sid SID) SaveInfoItem {
+	var saveInfoItem SaveInfoItem
 	err := me.db.View(func(tx *bolt.Tx) error {
-		saveItems := tx.Bucket(saveItemsBucket)
-		if saveItems == nil {
-			return fmt.Errorf("failed to find %q", saveItemsBucket)
+		saveInfo := tx.Bucket(saveInfoBucket)
+		if saveInfo == nil {
+			return fmt.Errorf("failed to find %q", saveInfoBucket)
 		}
-		rawSaveVal := saveItems.Get(sid.marshal())
-		if rawSaveVal != nil {
-			saveVal, err := unmarshalSaveVal(rawSaveVal)
+		rawSaveInfoVal := saveInfo.Get(sid.marshal())
+		if rawSaveInfoVal != nil {
+			saveInfoVal, err := unmarshalSaveInfoVal(rawSaveInfoVal)
 			if err != nil {
 				return err
 			}
-			saveItem.Sid = sid
-			saveItem.SaveVal = saveVal
+			saveInfoItem.Sid = sid
+			saveInfoItem.SaveInfoVal = saveInfoVal
 		}
 		return nil
 	})
 	if err != nil {
-		return newInvalidSaveItem()
+		return newInvalidSaveInfoItem()
 	}
-	return saveItem
+	return saveInfoItem
 }
 
 // SaveCount returns the number of saved files in the most recent save.
@@ -400,15 +400,15 @@ func (me *Fhd) ExtractForSid(sid SID, filename string,
 		if save == nil {
 			return fmt.Errorf("failed to find save %d", sid)
 		}
-		rawEntry := save.Get(rawFilename)
-		if rawEntry == nil {
+		rawSaveVal := save.Get(rawFilename)
+		if rawSaveVal == nil {
 			return fmt.Errorf("failed to find file %s in save %d", filename,
 				sid)
 		}
-		entry := unmarshalEntry(rawEntry)
+		saveVal := unmarshalSaveVal(rawSaveVal)
 		var err error
-		rawReader := bytes.NewReader(entry.Blob)
-		switch entry.Flag {
+		rawReader := bytes.NewReader(saveVal.Blob)
+		switch saveVal.Flag {
 		case rawFlag:
 			_, err = io.Copy(writer, rawReader)
 		case flateFlag:
@@ -418,7 +418,7 @@ func (me *Fhd) ExtractForSid(sid SID, filename string,
 			lzwReader := lzw.NewReader(rawReader, lzw.MSB, 0)
 			_, err = io.Copy(writer, lzwReader)
 		default:
-			return fmt.Errorf("invalid flag %v", entry.Flag)
+			return fmt.Errorf("invalid flag %v", saveVal.Flag)
 		}
 		return err
 	})
@@ -426,18 +426,19 @@ func (me *Fhd) ExtractForSid(sid SID, filename string,
 
 // Rename oldFilename to newFilename. This starts newFilename on a new save
 // history unconnected with oldFilename.
-func (me *Fhd) Rename(oldFilename, newFilename string) (SaveItem, error) {
-	var saveItem SaveItem
+func (me *Fhd) Rename(oldFilename, newFilename string) (SaveInfoItem,
+	error) {
+	var saveInfoItem SaveInfoItem
 	err1 := me.Unmonitor(oldFilename)
-	saveItem, err2 := me.MonitorWithComment(newFilename,
+	saveInfoItem, err2 := me.MonitorWithComment(newFilename,
 		fmt.Sprintf("renamed %q → %q", oldFilename, newFilename))
 	if err1 == nil {
-		return saveItem, err2
+		return saveInfoItem, err2
 	}
 	if err2 == nil {
-		return saveItem, err1
+		return saveInfoItem, err1
 	}
-	return saveItem, errors.Join(err1, err2)
+	return saveInfoItem, errors.Join(err1, err2)
 }
 
 // Compact eliminates wasted space in the .fhd file.
