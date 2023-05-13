@@ -250,7 +250,7 @@ func Test_tdata(t *testing.T) {
 		}
 		buffer.Reset()
 		for _, state := range states {
-			err = fhd.ExtractForSid(state.Sid, state.Filename, &buffer)
+			err = fhd.ExtractForSid(state.LastSid, state.Filename, &buffer)
 			if err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -298,7 +298,7 @@ func Test_tdata(t *testing.T) {
 		}
 		buffer.Reset()
 		for _, state := range states {
-			err = fhd.ExtractForSid(state.Sid, state.Filename, &buffer)
+			err = fhd.ExtractForSid(state.LastSid, state.Filename, &buffer)
 			if err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -346,7 +346,7 @@ func Test_tdata(t *testing.T) {
 		}
 		buffer.Reset()
 		for _, state := range states {
-			err = fhd.ExtractForSid(state.Sid, state.Filename, &buffer)
+			err = fhd.ExtractForSid(state.LastSid, state.Filename, &buffer)
 			if err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}

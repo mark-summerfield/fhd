@@ -212,7 +212,7 @@ func (me *Fhd) Save(comment string) (SaveInfoItem, error) {
 		count := 0
 		for _, stateItem := range monitored {
 			saved, ierr := me.maybeSaveOne(tx, saves, save, sid,
-				stateItem.Filename, stateItem.Sid)
+				stateItem.Filename, stateItem.LastSid)
 			if ierr != nil {
 				err = errors.Join(err, ierr)
 			}
@@ -358,7 +358,7 @@ func (me *Fhd) ExtractFile(filename string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return me.ExtractFileForSid(stateVal.Sid, filename)
+	return me.ExtractFileForSid(stateVal.LastSid, filename)
 }
 
 // Writes the content of the given filename from the specified Save
@@ -384,7 +384,7 @@ func (me *Fhd) Extract(filename string, writer io.Writer) error {
 	if err != nil {
 		return err
 	}
-	return me.ExtractForSid(stateVal.Sid, filename, writer)
+	return me.ExtractForSid(stateVal.LastSid, filename, writer)
 }
 
 // Writes the content of the given filename from the specified Save

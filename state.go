@@ -6,13 +6,13 @@ package fhd
 import "fmt"
 
 type StateVal struct {
-	Sid       SID // Most recent SID the corresponding file was saved into
+	LastSid   SID // Most recent SID the corresponding file was saved into
 	Monitored bool
 	FileKind  fileKind
 }
 
 func newStateVal(sid SID, monitored bool, fileKind fileKind) StateVal {
-	return StateVal{Sid: sid, Monitored: monitored, FileKind: fileKind}
+	return StateVal{LastSid: sid, Monitored: monitored, FileKind: fileKind}
 }
 
 func (me StateVal) String() string {
@@ -20,12 +20,12 @@ func (me StateVal) String() string {
 	if !me.Monitored {
 		monitored = "U"
 	}
-	return fmt.Sprintf("%s#%d:%s", monitored, me.Sid, me.FileKind)
+	return fmt.Sprintf("%s#%d:%s", monitored, me.LastSid, me.FileKind)
 }
 
 func (me StateVal) marshal() []byte {
 	raw := make([]byte, 0, 10)
-	raw = append(raw, me.Sid.marshal()...)
+	raw = append(raw, me.LastSid.marshal()...)
 	var monitored byte = 'M'
 	if !me.Monitored {
 		monitored = 'U'
@@ -37,7 +37,7 @@ func (me StateVal) marshal() []byte {
 func unmarshalStateVal(raw []byte) StateVal {
 	var stateVal StateVal
 	index := sidSize
-	stateVal.Sid = unmarshalSid(raw[:index])
+	stateVal.LastSid = unmarshalSid(raw[:index])
 	stateVal.Monitored = raw[index] == 'M'
 	if len(raw) > sidSize {
 		index++
