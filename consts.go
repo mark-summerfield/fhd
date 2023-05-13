@@ -25,7 +25,4 @@ var (
 		"*.lix", "*.o", "*.obj", "*.py[co]", "*.rs.bk", "*.so", "*.sw[nop]",
 		"*.swp", "*.tmp", "*~", "gpl-[0-9].[0-9].txt", "louti[0-9]*",
 		"moc_*.cpp", "qrc_*.cpp", "ui_*.h"}
-
-	uint16size = 2
-	uint32size = 4
 )

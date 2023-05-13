@@ -127,7 +127,8 @@ func (me *Fhd) Unmonitor(filenames ...string) error {
 		}
 		var err error
 		for _, filename := range filenames {
-			if ierr := me.unmonitor(states, ignores, filename); ierr != nil {
+			if ierr := me.unmonitor(states, ignores,
+				filename); ierr != nil {
 				err = errors.Join(err, ierr)
 			}
 		}
@@ -195,15 +196,15 @@ func (me *Fhd) Save(comment string) (SaveInfoItem, error) {
 	var saveInfoItem SaveInfoItem
 	err = me.db.Update(func(tx *bolt.Tx) error {
 		var err error
-		saveInfoItem, err = me.newSid(tx, comment)
+		saveInfoItem, err = me.nextSid(tx, comment)
 		if err != nil {
 			return err // saveInfoItem is invalid on err
 		}
-		sid := saveInfoItem.Sid
 		saves := tx.Bucket(savesBucket)
 		if saves == nil {
 			return errors.New("missing saves")
 		}
+		sid := saveInfoItem.Sid
 		save, err := saves.CreateBucket(sid.marshal())
 		if err != nil {
 			return fmt.Errorf("failed to save metadata for #%d", sid)
@@ -220,7 +221,7 @@ func (me *Fhd) Save(comment string) (SaveInfoItem, error) {
 			}
 		}
 		if err == nil && count > 0 {
-			err = me.saveInfoItemMeta(tx, saveInfoItem)
+			err = me.saveInfoItem(tx, saveInfoItem)
 		}
 		return err
 	})
@@ -260,7 +261,7 @@ func (me *Fhd) SaveCount() int {
 
 // SaveCountForSid returns the number of saved files in the specified save.
 func (me *Fhd) SaveCountForSid(sid SID) int {
-	count := 0
+	var count int
 	if !sid.IsValid() {
 		return 0
 	}

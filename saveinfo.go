@@ -57,8 +57,8 @@ func unmarshalSaveInfoVal(raw []byte) (SaveInfoVal, error) {
 		return saveInfoVal, errors.New("can't unmarshal empty saveval")
 	}
 	index := int(raw[0]) + 1
-	when, err := unmarshalTime(raw[1:index])
-	if err != nil {
+	var when time.Time
+	if err := when.UnmarshalBinary(raw[1:index]); err != nil {
 		return saveInfoVal, err
 	}
 	var comment string

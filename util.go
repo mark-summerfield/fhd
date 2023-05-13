@@ -78,7 +78,7 @@ func getExtractFilename(sid SID, filename string) string {
 	sep := "#"
 	var extracted string
 	for {
-		extracted = fmt.Sprintf("%s%s%s%d%s", dir, base, sep, sid, ext)
+		extracted = fmt.Sprintf("%s%s%s%03d%s", dir, base, sep, sid, ext)
 		if !gong.FileExists(extracted) {
 			break
 		}

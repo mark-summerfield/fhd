@@ -104,7 +104,7 @@ func (me *Fhd) monitor(filenames ...string) error {
 }
 
 func (me *Fhd) monitored(monitored bool) ([]*StateItem, error) {
-	stateItem := make([]*StateItem, 0)
+	stateItems := make([]*StateItem, 0)
 	err := me.db.View(func(tx *bolt.Tx) error {
 		states := tx.Bucket(statesBucket)
 		if states == nil {
@@ -116,8 +116,8 @@ func (me *Fhd) monitored(monitored bool) ([]*StateItem, error) {
 			rawStateVal = cursor.Next() {
 			stateVal := unmarshalStateVal(rawStateVal)
 			if stateVal.Monitored == monitored {
-				stateItem = append(stateItem, newState(string(rawFilename),
-					stateVal))
+				stateItems = append(stateItems,
+					newState(string(rawFilename), stateVal))
 			}
 		}
 		return nil
@@ -125,7 +125,7 @@ func (me *Fhd) monitored(monitored bool) ([]*StateItem, error) {
 	if err != nil {
 		return nil, err
 	}
-	return stateItem, nil
+	return stateItems, nil
 }
 
 func (me *Fhd) unmonitor(states, ignores *bolt.Bucket,
@@ -149,7 +149,7 @@ func (me *Fhd) getIgnores(tx *bolt.Tx) *bolt.Bucket {
 	return config.Bucket(configIgnore)
 }
 
-func (me *Fhd) newSid(tx *bolt.Tx, comment string) (SaveInfoItem, error) {
+func (me *Fhd) nextSid(tx *bolt.Tx, comment string) (SaveInfoItem, error) {
 	var sid SID
 	saveInfo := tx.Bucket(saveInfoBucket)
 	if saveInfo == nil {
@@ -166,8 +166,7 @@ func (me *Fhd) newSid(tx *bolt.Tx, comment string) (SaveInfoItem, error) {
 	return newSaveInfoItem(sid, time.Now(), comment), nil
 }
 
-func (me *Fhd) saveInfoItemMeta(tx *bolt.Tx,
-	saveInfoItem SaveInfoItem) error {
+func (me *Fhd) saveInfoItem(tx *bolt.Tx, saveInfoItem SaveInfoItem) error {
 	saveInfo := tx.Bucket(saveInfoBucket)
 	if saveInfo == nil {
 		return fmt.Errorf("failed to find %q", saveInfoBucket)

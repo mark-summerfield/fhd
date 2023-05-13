@@ -33,7 +33,7 @@ provides the underlying functionality that these tools use.
 
     "saves" bucket of buckets
 	key sid int # > 0
-	value bucket of SaveItem (key + SaveVal)
+	value bucket
 	    key filename string
 	    value Entry
 ```
