@@ -409,17 +409,17 @@ func (me *Fhd) ExtractForSid(sid SID, filename string,
 		saveVal := unmarshalSaveVal(rawSaveVal)
 		var err error
 		rawReader := bytes.NewReader(saveVal.Blob)
-		switch saveVal.Flag {
-		case rawFlag:
+		switch saveVal.Compression {
+		case noCompression:
 			_, err = io.Copy(writer, rawReader)
-		case flateFlag:
+		case flateCompression:
 			flateReader := flate.NewReader(rawReader)
 			_, err = io.Copy(writer, flateReader)
-		case lzwFlag:
+		case lzwCompression:
 			lzwReader := lzw.NewReader(rawReader, lzw.MSB, 0)
 			_, err = io.Copy(writer, lzwReader)
 		default:
-			return fmt.Errorf("invalid flag %v", saveVal.Flag)
+			return fmt.Errorf("invalid compression %v", saveVal.Compression)
 		}
 		return err
 	})

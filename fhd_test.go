@@ -62,27 +62,34 @@ func TestOpen(t *testing.T) {
 	}
 }
 
-func TestFlagForSizes(t *testing.T) {
-	if flag := flagForSizes(1000, 997, 998); flag != rawFlag {
-		t.Errorf("expected rawFlag, got %s", flag)
+func TestCompressionForSizes(t *testing.T) {
+	if compression := compressionForSizes(1000, 997,
+		998); compression != noCompression {
+		t.Errorf("expected noCompression, got %s", compression)
 	}
-	if flag := flagForSizes(1000, 945, 998); flag != flateFlag {
-		t.Errorf("expected flateFlag, got %s", flag)
+	if compression := compressionForSizes(1000, 945,
+		998); compression != flateCompression {
+		t.Errorf("expected flateCompression, got %s", compression)
 	}
-	if flag := flagForSizes(1000, 998, 949); flag != lzwFlag {
-		t.Errorf("expected lzwFlag, got %s", flag)
+	if compression := compressionForSizes(1000, 998,
+		949); compression != lzwCompression {
+		t.Errorf("expected lzwCompression, got %s", compression)
 	}
-	if flag := flagForSizes(1000, 0, 990); flag != rawFlag {
-		t.Errorf("expected rawFlag, got %s", flag)
+	if compression := compressionForSizes(1000, 0,
+		990); compression != noCompression {
+		t.Errorf("expected noCompression, got %s", compression)
 	}
-	if flag := flagForSizes(1000, 990, 0); flag != rawFlag {
-		t.Errorf("expected rawFlag, got %s", flag)
+	if compression := compressionForSizes(1000, 990,
+		0); compression != noCompression {
+		t.Errorf("expected noCompression, got %s", compression)
 	}
-	if flag := flagForSizes(1000, 889, 0); flag != flateFlag {
-		t.Errorf("expected flateFlag, got %s", flag)
+	if compression := compressionForSizes(1000, 889,
+		0); compression != flateCompression {
+		t.Errorf("expected flateCompression, got %s", compression)
 	}
-	if flag := flagForSizes(1000, 0, 889); flag != lzwFlag {
-		t.Errorf("expected lzwFlag, got %s", flag)
+	if compression := compressionForSizes(1000, 0,
+		889); compression != lzwCompression {
+		t.Errorf("expected lzwCompression, got %s", compression)
 	}
 }
 
@@ -413,7 +420,7 @@ states:
   wordsearch.pyw M#1:T
 saves:
   sid #1: 2023-05-11 08:45:38 started
-    battery.png R 2,525 bytes SHA256=7c94b6962b6f…7b6dfdb68c6 
+    battery.png U 2,525 bytes SHA256=7c94b6962b6f…7b6dfdb68c6 
     computer.bmp F 3,693 bytes SHA256=d274b3d4b89c…a858ff627ea 
     ring.py F 657 bytes SHA256=831de79f9c70…af3d6b9266b 
     wordsearch.pyw F 1,296 bytes SHA256=432823716ba1…123467d5a6c`

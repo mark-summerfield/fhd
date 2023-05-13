@@ -4,29 +4,29 @@
 package fhd
 
 const (
-	rawFlag   flag = 'R'
-	flateFlag flag = 'F'
-	lzwFlag   flag = 'L'
+	noCompression    compression = 'U'
+	flateCompression compression = 'F'
+	lzwCompression   compression = 'L'
 )
 
-type flag byte
+type compression byte
 
-func (me flag) String() string {
+func (me compression) String() string {
 	return string(me)
 }
 
-func flagForSizes(rawSize, flateSize, lzwSize int) flag {
+func compressionForSizes(rawSize, flateSize, lzwSize int) compression {
 	maxSize := int(float64(rawSize) * 0.95)
 	if (flateSize > maxSize && lzwSize > maxSize) || (flateSize == 0 &&
 		lzwSize == 0) {
-		return rawFlag
+		return noCompression
 	}
 	if flateSize > 0 && flateSize < maxSize && (lzwSize == 0 ||
 		(lzwSize > 0 && flateSize < lzwSize)) {
-		return flateFlag
+		return flateCompression
 	}
 	if lzwSize > 0 && lzwSize < maxSize {
-		return lzwFlag
+		return lzwCompression
 	}
-	return rawFlag
+	return noCompression
 }

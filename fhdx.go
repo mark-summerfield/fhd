@@ -191,14 +191,14 @@ func (me *Fhd) maybeSaveOne(tx *bolt.Tx, saves, save *bolt.Bucket, sid SID,
 	if me.sameAsPrev(saves, sid, filename, prevSid, &sha) {
 		return false, nil // No need to save if same as before.
 	}
-	flag := flagForSizes(len(raw), len(rawFlate), len(rawLzw))
-	saveVal := newSaveVal(sha, flag)
-	switch flag {
-	case rawFlag:
+	compression := compressionForSizes(len(raw), len(rawFlate), len(rawLzw))
+	saveVal := newSaveVal(sha, compression)
+	switch compression {
+	case noCompression:
 		saveVal.Blob = raw
-	case flateFlag:
+	case flateCompression:
 		saveVal.Blob = rawFlate
-	case lzwFlag:
+	case lzwCompression:
 		saveVal.Blob = rawLzw
 	}
 	rawFilename := []byte(filename)
