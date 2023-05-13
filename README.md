@@ -5,9 +5,13 @@ The `fhd` “File History Data” package is for use by the GUI
 and the command line [`fh`](https://github.com/mark-summerfield/fh) tool. It
 provides the underlying functionality that these tools use.
 
-`fhd` keeps all its data in a _single_ file with the `.fhd` extension.
-
 ## Data Structures
+
+The `fhd` library keeps all the data in a _single_ file with the `.fhd`
+extension. This data is in the form of a key–value store with some values
+nested key–values in their own right.
+
+![The `fhd` Key–Value Data Store](diag/db.svg)
 
 *TODO* replace with (generated) SVG
 

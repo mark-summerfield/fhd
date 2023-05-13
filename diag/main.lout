@@ -1,0 +1,111 @@
+# see build.sh
+@SysInclude{picture}
+@SysInclude{tbl}
+@SysInclude{diag}
+@Database @FontDef { myfontdefs }
+macro @NavyBlue {{cmyk 1.0 1.0 0.0 0.482}}
+@Illustration
+    @InitialFont{Venus Base 11p}
+4i @Wide 16.614c @High {
+@Box{
+
+@Box margin{0c}paint{white}
+@Tbl
+    aformat{@StartHSpan @Cell paint{lightgray}rulebelow{yes}A|
+            @HSpan}
+    bformat{@Cell A| @Cell B}
+{
+@Rowa A{@B config}
+@Rowb A{@B key}B{@NavyBlue @Color string}
+@Rowb A{value}B{@NavyBlue @Color any}
+}
+
+@DP
+
+@Box margin{0c}paint{white}
+@Tbl
+    aformat{@Cell A| @Cell B}
+    arulebelow{yes}
+    apaint{lightgray}
+    bformat{@Cell A| @Cell B}
+    cformat{@Cell A| @Cell marginabove{0c}B}
+{
+@Rowa A{@B states}B{@NavyBlue @Color StateItem}
+@Rowb A{@B Filename}B{@NavyBlue @Color string}
+@Rowc A{value}B{
+    @Box margin{0c}paint{white}
+    @Tbl
+        aformat{@StartHSpan @Cell paint{lightgray}rulebelow{yes}A| @HSpan}
+        bformat{@Cell A| @Cell B}
+    {
+    @Rowa A{@NavyBlue @Color StateVal}
+    @Rowb A{Monitored}B{@NavyBlue @Color bool}
+    @Rowb A{LastSid}B{@NavyBlue @Color SID}
+    @Rowb A{FileKind}B{@NavyBlue @Color fileKind}
+    }
+}
+}
+
+@DP
+
+@Box margin{0c}paint{white}
+@Tbl
+    aformat{@Cell A| @Cell B}
+    arulebelow{yes}
+    apaint{lightgray}
+    bformat{@Cell A| @Cell B}
+    cformat{@Cell A| @Cell marginabove{0c}B}
+{
+@Rowa A{@B saveinfo}B{@NavyBlue @Color SaveInfoItem}
+@Rowb A{@B Sid}B{@NavyBlue @Color SID}
+@Rowc A{value}B{
+    @Box margin{0c}paint{white}
+    @Tbl
+        aformat{@StartHSpan @Cell paint{lightgray}rulebelow{yes}A| @HSpan}
+        bformat{@Cell A| @Cell B}
+    {
+    @Rowa A{@NavyBlue @Color SaveInfoVal}
+    @Rowb A{When}B{@NavyBlue @Color time.Time}
+    @Rowb A{Comment}B{@NavyBlue @Color string}
+    }
+}
+}
+
+@DP
+
+@Box margin{0c}paint{white}
+@Tbl
+    aformat{@StartHSpan @Cell paint{lightgray}rulebelow{yes}A| @HSpan}
+    bformat{@Cell A| @Cell B}
+    cformat{@Cell A| @Cell marginabove{0c}B}
+{
+@Rowa A{@B saves}
+@Rowb A{@B Sid}B{@NavyBlue @Color SID}
+@Rowc A{value}B{
+    @Box margin{0c}paint{white}
+    @Tbl
+        aformat{@StartHSpan @Cell paint{lightgray}rulebelow{yes}A| @HSpan}
+        bformat{@Cell A| @Cell B}
+        cformat{@Cell A| @Cell marginabove{0c}B}
+    {
+    @Rowa A{@NavyBlue @Color @I SaveItem}
+    @Rowb A{@B Filename}B{@NavyBlue @Color string}
+    @Rowc A{value}B{
+        @Box margin{0c}paint{white}
+        @Tbl
+            aformat{@StartHSpan @Cell paint{lightgray}rulebelow{yes}A|
+                    @HSpan}
+            bformat{@Cell A| @Cell B}
+        {
+        @Rowa A{@NavyBlue @Color SaveVal}
+        @Rowb A{Sha}B{@NavyBlue @Color shA256}
+        @Rowb A{Compression}B{@NavyBlue @Color compression}
+        @Rowb A{Blob}B{@NavyBlue @Color []byte}
+        }
+    }
+    }
+}
+}
+
+}
+}
