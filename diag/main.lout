@@ -6,8 +6,8 @@
 macro @NavyBlue {{cmyk 1.0 1.0 0.0 0.482}}
 @Illustration
     @InitialFont{Venus Base 11p}
-4i @Wide 16.614c @High {
-@Box{
+4.5i @Wide 5.9i @High {
+@Box linewidth{0c}margin{1f}{
 
 @Box margin{0c}paint{white}
 @Tbl
@@ -19,8 +19,6 @@ macro @NavyBlue {{cmyk 1.0 1.0 0.0 0.482}}
 @Rowb A{@B key}B{@NavyBlue @Color string}
 @Rowb A{value}B{@NavyBlue @Color any}
 }
-
-@DP
 
 @Box margin{0c}paint{white}
 @Tbl
