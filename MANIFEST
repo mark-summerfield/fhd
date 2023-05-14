@@ -1,3 +1,8 @@
+# TODO Save(): if a monitored file is missing
+#   (i) unmonitor the file
+#   (ii) store the filename
+#   At the end return: SaveInfo, []string /* missing */, error
+
 # TODO test Rename()
 # TODO Compact()
 # TODO Delete()

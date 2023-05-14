@@ -88,7 +88,7 @@ func (me *Fhd) Monitored() ([]*StateItem, error) {
 	return me.monitored(true)
 }
 
-// Monitor adds the given files to be monitored _and_ does an initial Save.
+// Monitor adds the given files to be monitored _and_ does a Save.
 // Returns the new Save ID (SID).
 func (me *Fhd) Monitor(filenames ...string) (SaveInfoItem, error) {
 	return me.MonitorWithComment("", filenames...)
@@ -425,8 +425,8 @@ func (me *Fhd) ExtractForSid(sid SID, filename string,
 	})
 }
 
-// Rename oldFilename to newFilename. This starts newFilename on a new save
-// history unconnected with oldFilename.
+// Rename oldFilename to newFilename. This is merely a convenience for
+// fhd.Unmonitor(oldFilename) followed by fhd.Monitor(newFilename).
 func (me *Fhd) Rename(oldFilename, newFilename string) (SaveInfoItem,
 	error) {
 	var saveInfoItem SaveInfoItem
