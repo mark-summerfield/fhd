@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/mark-summerfield/gong"
+	"github.com/mark-summerfield/gset"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -77,8 +78,8 @@ func makeConfig(tx *bolt.Tx) error {
 	return err
 }
 
-func (me *Fhd) monitor(filenames ...string) ([]string, error) {
-	missing := make([]string, 0)
+func (me *Fhd) monitor(filenames ...string) (gset.Set[string], error) {
+	missing := gset.New[string]()
 	err := me.db.Update(func(tx *bolt.Tx) error {
 		states := tx.Bucket(statesBucket)
 		if states == nil {
@@ -88,7 +89,7 @@ func (me *Fhd) monitor(filenames ...string) ([]string, error) {
 		for _, filename := range filenames {
 			filename = me.relativePath(filename)
 			if !gong.FileExists(filename) {
-				missing = append(missing, filename)
+				missing.Add(filename)
 				continue // ignore nonexistent files
 			}
 			rawFilename := []byte(filename)
@@ -135,7 +136,8 @@ func (me *Fhd) monitored(monitored bool) ([]*StateItem, error) {
 	return stateItems, nil
 }
 
-func (me *Fhd) save(comment string, missing []string) (SaveResult, error) {
+func (me *Fhd) save(comment string, missing gset.Set[string]) (SaveResult,
+	error) {
 	monitored, err := me.Monitored()
 	if err != nil {
 		return newInvalidSaveResult(), err
@@ -174,11 +176,11 @@ func (me *Fhd) save(comment string, missing []string) (SaveResult, error) {
 					err = errors.Join(err, ierr)
 				}
 				if saved {
+					saveResult.MissingFiles.Delete(stateItem.Filename)
 					count++
 				}
 			} else { // Unmonitor
-				saveResult.MissingFiles = append(saveResult.MissingFiles,
-					stateItem.Filename)
+				saveResult.MissingFiles.Add(stateItem.Filename)
 				ierr := me.unmonitor(states, ignores, stateItem.Filename)
 				if ierr != nil {
 					err = errors.Join(err, ierr)

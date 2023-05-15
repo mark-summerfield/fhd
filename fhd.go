@@ -89,13 +89,15 @@ func (me *Fhd) Monitored() ([]*StateItem, error) {
 }
 
 // Monitor adds the given files to be monitored _and_ does a Save.
-// Returns the new Save ID (SID).
+// Returns the new Save ID (SID) and a list of missing files (which aren't
+// monitored).
 func (me *Fhd) Monitor(filenames ...string) (SaveResult, error) {
 	return me.MonitorWithComment("", filenames...)
 }
 
 // MonitorWithComment adds the given files to be monitored _and_ does an
-// initial Save with the given comment. Returns the new Save ID (SID).
+// initial Save with the given comment. Returns the new Save ID (SID) and a
+// list of missing files (which aren't monitored).
 func (me *Fhd) MonitorWithComment(comment string,
 	filenames ...string) (SaveResult, error) {
 	missing, err := me.monitor(filenames...)

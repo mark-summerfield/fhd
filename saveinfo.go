@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/mark-summerfield/gset"
 )
 
 type SaveInfoVal struct {
@@ -22,12 +24,12 @@ type SaveInfoItem struct {
 
 type SaveResult struct {
 	SaveInfoItem
-	MissingFiles []string
+	MissingFiles gset.Set[string]
 }
 
 func newSaveResult(sid SID, when time.Time, comment string) SaveResult {
 	return SaveResult{SaveInfoItem: newSaveInfoItem(sid, when, comment),
-		MissingFiles: make([]string, 0)}
+		MissingFiles: gset.New[string]()}
 }
 
 func newInvalidSaveResult() SaveResult {
