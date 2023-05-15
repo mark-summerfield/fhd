@@ -77,15 +77,21 @@ func makeConfig(tx *bolt.Tx) error {
 	return err
 }
 
-func (me *Fhd) monitor(filenames ...string) error {
-	return me.db.Update(func(tx *bolt.Tx) error {
+func (me *Fhd) monitor(filenames ...string) ([]string, error) {
+	missing := make([]string, 0)
+	err := me.db.Update(func(tx *bolt.Tx) error {
 		states := tx.Bucket(statesBucket)
 		if states == nil {
 			return fmt.Errorf("failed to find %q", statesBucket)
 		}
 		var err error
 		for _, filename := range filenames {
-			rawFilename := []byte(me.relativePath(filename))
+			filename = me.relativePath(filename)
+			if !gong.FileExists(filename) {
+				missing = append(missing, filename)
+				continue // ignore nonexistent files
+			}
+			rawFilename := []byte(filename)
 			var stateVal StateVal
 			rawOldStateVal := states.Get(rawFilename)
 			if rawOldStateVal != nil {
@@ -101,6 +107,7 @@ func (me *Fhd) monitor(filenames ...string) error {
 		}
 		return err
 	})
+	return missing, err
 }
 
 func (me *Fhd) monitored(monitored bool) ([]*StateItem, error) {
@@ -128,6 +135,64 @@ func (me *Fhd) monitored(monitored bool) ([]*StateItem, error) {
 	return stateItems, nil
 }
 
+func (me *Fhd) save(comment string, missing []string) (SaveResult, error) {
+	monitored, err := me.Monitored()
+	if err != nil {
+		return newInvalidSaveResult(), err
+	}
+	var saveResult SaveResult
+	err = me.db.Update(func(tx *bolt.Tx) error {
+		var err error
+		states := tx.Bucket(statesBucket)
+		if states == nil {
+			return fmt.Errorf("failed to find %q", statesBucket)
+		}
+		ignores := me.getIgnores(tx)
+		if ignores == nil {
+			return fmt.Errorf("failed to find %q", configIgnore)
+		}
+		saveResult, err = me.nextSid(tx, comment)
+		if err != nil {
+			return err // saveResult is invalid on err
+		}
+		saveResult.MissingFiles = missing
+		saves := tx.Bucket(savesBucket)
+		if saves == nil {
+			return errors.New("missing saves")
+		}
+		sid := saveResult.Sid
+		save, err := saves.CreateBucket(sid.marshal())
+		if err != nil {
+			return fmt.Errorf("failed to save metadata for #%d", sid)
+		}
+		count := 0
+		for _, stateItem := range monitored {
+			if gong.FileExists(stateItem.Filename) { // Save
+				saved, ierr := me.maybeSaveOne(tx, saves, save, sid,
+					stateItem.Filename, stateItem.LastSid)
+				if ierr != nil {
+					err = errors.Join(err, ierr)
+				}
+				if saved {
+					count++
+				}
+			} else { // Unmonitor
+				saveResult.MissingFiles = append(saveResult.MissingFiles,
+					stateItem.Filename)
+				ierr := me.unmonitor(states, ignores, stateItem.Filename)
+				if ierr != nil {
+					err = errors.Join(err, ierr)
+				}
+			}
+		}
+		if err == nil && count > 0 {
+			err = me.saveInfoItem(tx, saveResult.SaveInfoItem)
+		}
+		return err
+	})
+	return saveResult, err
+}
+
 func (me *Fhd) unmonitor(states, ignores *bolt.Bucket,
 	filename string) error {
 	rawFilename := []byte(me.relativePath(filename))
@@ -149,11 +214,11 @@ func (me *Fhd) getIgnores(tx *bolt.Tx) *bolt.Bucket {
 	return config.Bucket(configIgnore)
 }
 
-func (me *Fhd) nextSid(tx *bolt.Tx, comment string) (SaveInfoItem, error) {
+func (me *Fhd) nextSid(tx *bolt.Tx, comment string) (SaveResult, error) {
 	var sid SID
 	saveInfo := tx.Bucket(saveInfoBucket)
 	if saveInfo == nil {
-		return newInvalidSaveInfoItem(), fmt.Errorf("failed to find %q",
+		return newInvalidSaveResult(), fmt.Errorf("failed to find %q",
 			saveInfoBucket)
 	}
 	cursor := saveInfo.Cursor()
@@ -163,7 +228,7 @@ func (me *Fhd) nextSid(tx *bolt.Tx, comment string) (SaveInfoItem, error) {
 	} else {
 		sid = unmarshalSid(rawSid) + 1
 	}
-	return newSaveInfoItem(sid, time.Now(), comment), nil
+	return newSaveResult(sid, time.Now(), comment), nil
 }
 
 func (me *Fhd) saveInfoItem(tx *bolt.Tx, saveInfoItem SaveInfoItem) error {

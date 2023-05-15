@@ -90,19 +90,19 @@ func (me *Fhd) Monitored() ([]*StateItem, error) {
 
 // Monitor adds the given files to be monitored _and_ does a Save.
 // Returns the new Save ID (SID).
-func (me *Fhd) Monitor(filenames ...string) (SaveInfoItem, error) {
+func (me *Fhd) Monitor(filenames ...string) (SaveResult, error) {
 	return me.MonitorWithComment("", filenames...)
 }
 
 // MonitorWithComment adds the given files to be monitored _and_ does an
 // initial Save with the given comment. Returns the new Save ID (SID).
 func (me *Fhd) MonitorWithComment(comment string,
-	filenames ...string) (SaveInfoItem, error) {
-	err := me.monitor(filenames...)
+	filenames ...string) (SaveResult, error) {
+	missing, err := me.monitor(filenames...)
 	if err != nil {
-		return newInvalidSaveInfoItem(), err
+		return newInvalidSaveResult(), err
 	}
-	return me.Save(comment)
+	return me.save(comment, missing)
 }
 
 // Unmonitored returns the list of every unmonitored file.
@@ -187,45 +187,10 @@ func (me *Fhd) Unignore(filenames ...string) error {
 }
 
 // Save saves a snapshot of every monitored file that's changed and returns
-// the corresponding SaveInfoItem with the new save ID (SID).
-func (me *Fhd) Save(comment string) (SaveInfoItem, error) {
-	monitored, err := me.Monitored()
-	if err != nil {
-		return newInvalidSaveInfoItem(), err
-	}
-	var saveInfoItem SaveInfoItem
-	err = me.db.Update(func(tx *bolt.Tx) error {
-		var err error
-		saveInfoItem, err = me.nextSid(tx, comment)
-		if err != nil {
-			return err // saveInfoItem is invalid on err
-		}
-		saves := tx.Bucket(savesBucket)
-		if saves == nil {
-			return errors.New("missing saves")
-		}
-		sid := saveInfoItem.Sid
-		save, err := saves.CreateBucket(sid.marshal())
-		if err != nil {
-			return fmt.Errorf("failed to save metadata for #%d", sid)
-		}
-		count := 0
-		for _, stateItem := range monitored {
-			saved, ierr := me.maybeSaveOne(tx, saves, save, sid,
-				stateItem.Filename, stateItem.LastSid)
-			if ierr != nil {
-				err = errors.Join(err, ierr)
-			}
-			if saved {
-				count++
-			}
-		}
-		if err == nil && count > 0 {
-			err = me.saveInfoItem(tx, saveInfoItem)
-		}
-		return err
-	})
-	return saveInfoItem, err
+// the corresponding SaveResult with the new save ID (SID) and a list of any
+// missing files (which have now become unmonitored).
+func (me *Fhd) Save(comment string) (SaveResult, error) {
+	return me.save(comment, nil)
 }
 
 // SaveInfoItemForSid returns the SaveInfoItem for the given SID or an
@@ -427,19 +392,17 @@ func (me *Fhd) ExtractForSid(sid SID, filename string,
 
 // Rename oldFilename to newFilename. This is merely a convenience for
 // fhd.Unmonitor(oldFilename) followed by fhd.Monitor(newFilename).
-func (me *Fhd) Rename(oldFilename, newFilename string) (SaveInfoItem,
-	error) {
-	var saveInfoItem SaveInfoItem
+func (me *Fhd) Rename(oldFilename, newFilename string) (SaveResult, error) {
 	err1 := me.Unmonitor(oldFilename)
-	saveInfoItem, err2 := me.MonitorWithComment(newFilename,
+	saveResult, err2 := me.MonitorWithComment(newFilename,
 		fmt.Sprintf("renamed %q → %q", oldFilename, newFilename))
 	if err1 == nil {
-		return saveInfoItem, err2
+		return saveResult, err2
 	}
 	if err2 == nil {
-		return saveInfoItem, err1
+		return saveResult, err1
 	}
-	return saveInfoItem, errors.Join(err1, err2)
+	return saveResult, errors.Join(err1, err2)
 }
 
 // Compact eliminates wasted space in the .fhd file.

@@ -20,6 +20,20 @@ type SaveInfoItem struct {
 	SaveInfoVal
 }
 
+type SaveResult struct {
+	SaveInfoItem
+	MissingFiles []string
+}
+
+func newSaveResult(sid SID, when time.Time, comment string) SaveResult {
+	return SaveResult{SaveInfoItem: newSaveInfoItem(sid, when, comment),
+		MissingFiles: make([]string, 0)}
+}
+
+func newInvalidSaveResult() SaveResult {
+	return SaveResult{SaveInfoItem: newInvalidSaveInfoItem()}
+}
+
 func newSaveInfoItem(sid SID, when time.Time, comment string) SaveInfoItem {
 	return SaveInfoItem{Sid: sid,
 		SaveInfoVal: SaveInfoVal{When: when, Comment: comment}}
