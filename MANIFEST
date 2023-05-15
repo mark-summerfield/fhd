@@ -1,10 +1,13 @@
+# TODO test missing
+# 5/ copy 4 excl. ring.py, edit wordsearch.pyw
+# 6/ restore ring.py (copy from 4) and monitor it again
 # TODO test Rename()
 # TODO Compact()
 # TODO Delete()
 # TODO Purge()
 
 fhd.go
-fhdx.go # TODO refactor save()
+fhdx.go
 dump.go
 state.go
 compression.go

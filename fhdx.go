@@ -169,22 +169,13 @@ func (me *Fhd) save(comment string, missing gset.Set[string]) (SaveResult,
 		}
 		count := 0
 		for _, stateItem := range monitored {
-			if gong.FileExists(stateItem.Filename) { // Save
-				saved, ierr := me.maybeSaveOne(tx, saves, save, sid,
-					stateItem.Filename, stateItem.LastSid)
-				if ierr != nil {
-					err = errors.Join(err, ierr)
-				}
-				if saved {
-					saveResult.MissingFiles.Delete(stateItem.Filename)
-					count++
-				}
-			} else { // Unmonitor
-				saveResult.MissingFiles.Add(stateItem.Filename)
-				ierr := me.unmonitor(states, ignores, stateItem.Filename)
-				if ierr != nil {
-					err = errors.Join(err, ierr)
-				}
+			saved, ierr := me.saveOrUnmonitorOne(&saveResult, stateItem, tx,
+				saves, save, sid, states, ignores)
+			if ierr != nil {
+				err = errors.Join(err, ierr)
+			}
+			if saved {
+				count++
 			}
 		}
 		if err == nil && count > 0 {
@@ -243,6 +234,24 @@ func (me *Fhd) saveInfoItem(tx *bolt.Tx, saveInfoItem SaveInfoItem) error {
 		err = saveInfo.Put(saveInfoItem.Sid.marshal(), rawSaveInfoVal)
 	}
 	return err
+}
+
+func (me *Fhd) saveOrUnmonitorOne(saveResult *SaveResult,
+	stateItem *StateItem, tx *bolt.Tx, saves, save *bolt.Bucket,
+	sid SID, states, ignores *bolt.Bucket) (bool, error) {
+	var err error
+	var saved bool
+	if gong.FileExists(stateItem.Filename) { // Save
+		saved, err = me.maybeSaveOne(tx, saves, save, sid,
+			stateItem.Filename, stateItem.LastSid)
+		if saved {
+			saveResult.MissingFiles.Delete(stateItem.Filename)
+		}
+	} else { // Unmonitor
+		saveResult.MissingFiles.Add(stateItem.Filename)
+		err = me.unmonitor(states, ignores, stateItem.Filename)
+	}
+	return saved, err
 }
 
 // If the new file's SHA256 != prev SHA256 (or there is no prev) we save the
