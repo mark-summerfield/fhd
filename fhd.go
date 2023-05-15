@@ -190,7 +190,7 @@ func (me *Fhd) Unignore(filenames ...string) error {
 
 // Save saves a snapshot of every monitored file that's changed and returns
 // the corresponding SaveResult with the new save ID (SID) and a list of any
-// missing files (which have now become unmonitored).
+// missing files (which have now become unmonitored—or ignored).
 func (me *Fhd) Save(comment string) (SaveResult, error) {
 	return me.save(comment, nil)
 }
@@ -245,7 +245,7 @@ func (me *Fhd) SaveCountForSid(sid SID) int {
 	return count
 }
 
-// Sid returns the most recent Save ID (SID) or 0 on error.
+// Sid returns the most recent Save ID (SID) or InvalidSID on error.
 func (me *Fhd) Sid() SID {
 	var sid SID
 	_ = me.db.View(func(tx *bolt.Tx) error {
@@ -317,8 +317,8 @@ func (me *Fhd) SidsForFilename(filename string) ([]SID, error) {
 	return sids, err
 }
 
-// Writes the content of the given filename from the most recent Save to
-// new filename, filename#SID.ext, and returns the new filename.
+// Writes the content of the given filename from the most recently saved
+// change to a new filename, filename#SID.ext, and returns the new filename.
 func (me *Fhd) ExtractFile(filename string) (string, error) {
 	filename = me.relativePath(filename)
 	stateVal, err := me.StateForFilename(filename)
@@ -343,8 +343,8 @@ func (me *Fhd) ExtractFileForSid(sid SID, filename string) (string, error) {
 	return extracted, err
 }
 
-// Writes the content of the given filename from the most recent Save
-// to the given writer.
+// Writes the content of the given filename from the most recently saved
+// change to the given writer.
 func (me *Fhd) Extract(filename string, writer io.Writer) error {
 	filename = me.relativePath(filename)
 	stateVal, err := me.StateForFilename(filename)
@@ -417,16 +417,16 @@ func (me *Fhd) Compact() error {
 	return errors.New("Compact unimplemented") // TODO
 }
 
-// Delete deletes the given file in the given save.
-// If this is the only occurrence of the file, the file's state is set to
-// Ignored.
-func (me *Fhd) Delete(sid int, filename string) error {
+// Delete deletes the given file for the given save.
+// If this is the only occurrence of the file, adds the filename to the
+// ignored list.
+func (me *Fhd) Delete(sid SID, filename string) error {
 	//rawFilename = []byte(me.relativePath(filename)) // TODO
 	return errors.New("Delete unimplemented") // TODO
 }
 
-// Purges deletes every save of the given file and sets the file's state is
-// set to Ignored.
+// Purges deletes every save of the given file and adds the filename to the
+// ignored list.
 func (me *Fhd) Purge(filename string) error {
 	//rawFilename = []byte(me.relativePath(filename)) // TODO
 	return errors.New("Purge unimplemented") // TODO

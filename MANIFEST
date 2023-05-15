@@ -4,7 +4,7 @@
 # TODO Purge()
 
 fhd.go
-fhdx.go
+fhdx.go # TODO refactor save()
 dump.go
 state.go
 compression.go

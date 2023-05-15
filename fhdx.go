@@ -98,7 +98,7 @@ func (me *Fhd) monitor(filenames ...string) (gset.Set[string], error) {
 			if rawOldStateVal != nil {
 				stateVal = unmarshalStateVal(rawOldStateVal)
 				stateVal.Monitored = true
-			} else {
+			} else { // sid will be set in save()
 				stateVal = newStateVal(InvalidSID, true, binKind)
 			}
 			if ierr := states.Put(rawFilename,
