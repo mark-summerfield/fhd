@@ -2,9 +2,9 @@
 # - Ignored()
 # - Ignore()
 # - Unignore()
-# TODO Compact()
-# TODO Delete()
-# TODO Purge()
+# TODO Compact() + test
+# TODO Delete() + test
+# TODO Purge() + test
 
 fhd.go
 fhdx.go
