@@ -1,3 +1,7 @@
+# TODO test:
+# - Ignored()
+# - Ignore()
+# - Unignore()
 # TODO Compact()
 # TODO Delete()
 # TODO Purge()

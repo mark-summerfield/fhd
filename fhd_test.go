@@ -51,6 +51,11 @@ func TestOpen(t *testing.T) {
 			t.Errorf("unexpected file format: got %d, expected %d",
 				fileformat, fileFormat)
 		}
+		actual = fhd.String()
+		expected := fmt.Sprintf("<Fhd filename=%q format=1>", filename)
+		if actual != expected {
+			t.Errorf("expected String of %q, got %q", expected, actual)
+		}
 	}
 }
 
@@ -591,6 +596,22 @@ func Test_tdata(t *testing.T) {
 				t.Errorf("expected equal for %s", state.Filename)
 			}
 			buffer.Reset()
+		}
+
+		monitored, err := fhd.Monitored()
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if len(monitored) != 4 {
+			t.Errorf("expected 4 monitored files, got %d", len(monitored))
+		}
+		unmonitored, err := fhd.Unmonitored()
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if len(unmonitored) != 1 {
+			t.Errorf("expected 1 unmonitored files, got %d",
+				len(unmonitored))
 		}
 
 		err = os.Chdir("../1")
