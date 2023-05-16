@@ -44,5 +44,5 @@ dub.selections.json
 zig-cache
 dist/
 build/
-fhd
+*.fhd
 zOld/
