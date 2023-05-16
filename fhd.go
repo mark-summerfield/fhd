@@ -396,8 +396,9 @@ func (me *Fhd) ExtractForSid(sid SID, filename string,
 // fhd.Unmonitor(oldFilename) followed by fhd.Monitor(newFilename).
 func (me *Fhd) Rename(oldFilename, newFilename string) (SaveResult, error) {
 	err1 := me.Unmonitor(oldFilename)
-	saveResult, err2 := me.MonitorWithComment(newFilename,
-		fmt.Sprintf("renamed %q → %q", oldFilename, newFilename))
+	saveResult, err2 := me.MonitorWithComment(
+		fmt.Sprintf("renamed %q → %q", oldFilename, newFilename),
+		newFilename)
 	if err1 == nil {
 		return saveResult, err2
 	}

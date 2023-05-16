@@ -157,7 +157,11 @@ func (me *Fhd) save(comment string, missing gset.Set[string]) (SaveResult,
 		if err != nil {
 			return err // saveResult is invalid on err
 		}
-		saveResult.MissingFiles = missing
+		if len(missing) > 0 {
+			saveResult.MissingFiles = missing
+		} else {
+			saveResult.MissingFiles = gset.New[string]()
+		}
 		saves := tx.Bucket(savesBucket)
 		if saves == nil {
 			return errors.New("missing saves")
@@ -178,7 +182,7 @@ func (me *Fhd) save(comment string, missing gset.Set[string]) (SaveResult,
 				count++
 			}
 		}
-		if err == nil && count > 0 {
+		if err == nil {
 			err = me.saveInfoItem(tx, saveResult.SaveInfoItem)
 		}
 		return err
