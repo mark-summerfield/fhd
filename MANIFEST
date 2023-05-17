@@ -1,3 +1,29 @@
+# TODO
+# - Change ignores from key=pattern value = empty to key=pattern
+#   value=IgnoreKind
+# - type IgnoreKind byte
+# - const (
+#   IgnoreFilename IgnoreKind = 'f'
+#   IgnoreDirname IgnoreKind = 'd'
+#   IgnoreGlob IgnoreKind = 'g'
+#   )
+# - type IgnoreItem struct {
+#   Pattern string
+#   IgnoreKind IgnoreKind
+#   }
+# - Update Ignored(), Ignore(), and Unignore()
+# - Update mustIgnore()
+#   name := filepath.Base(filename) # not filename!
+#   switch value[0] {
+#	case IgnoreGlob: as now but use name not filename
+#	case IgnoreFilename: use name not filename
+#	case IgnoreDirname: split filename into subpaths and compare each
+#   }
+# TODO
+# func (me *Fhd) Unaccounted() gset.Set[string] {
+#   returns a set of all filenames in fhd's folder which are:
+#   not monitored; not unmonitored; not ignored
+# }
 # TODO test:
 # - Ignored()
 # - Ignore()
