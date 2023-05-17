@@ -89,22 +89,22 @@ func (me *Fhd) Monitored() ([]*StateItem, error) {
 }
 
 // Monitor adds the given files to be monitored _and_ does a Save.
-// Returns the new Save ID (SID) and a list of missing files (which aren't
-// monitored).
+// Returns the new Save ID (SID) and sets of missing and ignored files
+// (which aren't monitored).
 func (me *Fhd) Monitor(filenames ...string) (SaveResult, error) {
 	return me.MonitorWithComment("", filenames...)
 }
 
 // MonitorWithComment adds the given files to be monitored _and_ does an
-// initial Save with the given comment. Returns the new Save ID (SID) and a
-// list of missing files (which aren't monitored).
+// initial Save with the given comment. Returns the new Save ID (SID) and
+// sets of missing and ignored files (which aren't monitored).
 func (me *Fhd) MonitorWithComment(comment string,
 	filenames ...string) (SaveResult, error) {
-	missing, err := me.monitor(filenames...)
+	missing, ignored, err := me.monitor(filenames...)
 	if err != nil {
 		return newInvalidSaveResult(), err
 	}
-	return me.save(comment, missing)
+	return me.save(comment, missing, ignored)
 }
 
 // Unmonitored returns the list of every unmonitored file.
@@ -189,10 +189,10 @@ func (me *Fhd) Unignore(filenames ...string) error {
 }
 
 // Save saves a snapshot of every monitored file that's changed and returns
-// the corresponding SaveResult with the new save ID (SID) and a list of any
-// missing files (which have now become unmonitored—or ignored).
+// the corresponding SaveResult with the new save ID (SID) and sets of any
+// missing and ignored files (which have now become unmonitored—or ignored).
 func (me *Fhd) Save(comment string) (SaveResult, error) {
-	return me.save(comment, nil)
+	return me.save(comment, nil, nil)
 }
 
 // SaveInfoItemForSid returns the SaveInfoItem for the given SID or an

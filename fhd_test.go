@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -642,8 +643,8 @@ func Test_tdata(t *testing.T) {
 }
 
 func removeFhds(filename string) {
-	for _, i := range []string{"1", "2", "3", "4"} {
-		os.Remove("tdata/" + i + "/" + filename)
+	for i := 1; i < 9; i++ {
+		os.Remove("tdata/" + strconv.Itoa(i) + "/" + filename)
 	}
 }
 

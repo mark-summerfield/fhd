@@ -25,11 +25,12 @@ type SaveInfoItem struct {
 type SaveResult struct {
 	SaveInfoItem
 	MissingFiles gset.Set[string]
+	IgnoredFiles gset.Set[string]
 }
 
 func newSaveResult(sid SID, when time.Time, comment string) SaveResult {
 	return SaveResult{SaveInfoItem: newSaveInfoItem(sid, when, comment),
-		MissingFiles: gset.New[string]()}
+		MissingFiles: gset.New[string](), IgnoredFiles: gset.New[string]()}
 }
 
 func newInvalidSaveResult() SaveResult {

@@ -78,12 +78,18 @@ func makeConfig(tx *bolt.Tx) error {
 	return err
 }
 
-func (me *Fhd) monitor(filenames ...string) (gset.Set[string], error) {
+func (me *Fhd) monitor(filenames ...string) (gset.Set[string],
+	gset.Set[string], error) {
 	missing := gset.New[string]()
+	ignored := gset.New[string]()
 	err := me.db.Update(func(tx *bolt.Tx) error {
 		states := tx.Bucket(statesBucket)
 		if states == nil {
 			return fmt.Errorf("failed to find %q", statesBucket)
+		}
+		ignores := me.getIgnores(tx)
+		if ignores == nil {
+			return fmt.Errorf("failed to find %q", configIgnore)
 		}
 		var err error
 		for _, filename := range filenames {
@@ -91,6 +97,10 @@ func (me *Fhd) monitor(filenames ...string) (gset.Set[string], error) {
 			if !gong.FileExists(filename) {
 				missing.Add(filename)
 				continue // ignore nonexistent files
+			}
+			if me.mustIgnore(ignores, filename) {
+				ignored.Add(filename)
+				continue // ignore ignore files
 			}
 			rawFilename := []byte(filename)
 			var stateVal StateVal
@@ -108,7 +118,20 @@ func (me *Fhd) monitor(filenames ...string) (gset.Set[string], error) {
 		}
 		return err
 	})
-	return missing, err
+	return missing, ignored, err
+}
+
+func (me *Fhd) mustIgnore(ignores *bolt.Bucket, filename string) bool {
+	filename = filepath.Base(filename)
+	cursor := ignores.Cursor()
+	rawPattern, _ := cursor.First()
+	for ; rawPattern != nil; rawPattern, _ = cursor.Next() {
+		if matched, err := filepath.Match(string(rawPattern),
+			filename); matched && err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func (me *Fhd) monitored(monitored bool) ([]*StateItem, error) {
@@ -136,8 +159,8 @@ func (me *Fhd) monitored(monitored bool) ([]*StateItem, error) {
 	return stateItems, nil
 }
 
-func (me *Fhd) save(comment string, missing gset.Set[string]) (SaveResult,
-	error) {
+func (me *Fhd) save(comment string, missing, ignored gset.Set[string]) (
+	SaveResult, error) {
 	monitored, err := me.Monitored()
 	if err != nil {
 		return newInvalidSaveResult(), err
@@ -161,6 +184,11 @@ func (me *Fhd) save(comment string, missing gset.Set[string]) (SaveResult,
 			saveResult.MissingFiles = missing
 		} else {
 			saveResult.MissingFiles = gset.New[string]()
+		}
+		if len(ignored) > 0 {
+			saveResult.IgnoredFiles = ignored
+		} else {
+			saveResult.IgnoredFiles = gset.New[string]()
 		}
 		saves := tx.Bucket(savesBucket)
 		if saves == nil {
